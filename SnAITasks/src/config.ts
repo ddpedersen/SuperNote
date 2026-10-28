@@ -5,7 +5,7 @@
  * nothing is saved, and can be imported into Settings.
  */
 import { FileUtils, PluginManager } from 'sn-plugin-lib';
-import { log, mask } from './log';
+import { brief, log, mask } from './log';
 import { readStored, writeStored } from './store';
 
 export const MYSTYLE_DIR = '/storage/emulated/0/MyStyle';
@@ -65,32 +65,68 @@ function normalize(json: Partial<Config>): Config {
 
 const isComplete = (c: Config) => !!c.anthropicApiKey && !!c.marvinApiToken;
 
+/** Where earlier versions told users to put the key file; always checked first. */
+const LEGACY_KEY_FILE = `${MYSTYLE_DIR}/SnMarvin/config.json`;
+
+/**
+ * FileUtils.listFiles is typed as string[], but the device returns
+ * { path, type } objects (type 0 = folder, 1 = file). Accept both.
+ */
+function toEntry(raw: unknown, dir: string): { path: string; isDir: boolean | null } | null {
+  const path =
+    typeof raw === 'string'
+      ? raw
+      : raw && typeof raw === 'object' && typeof (raw as { path?: unknown }).path === 'string'
+        ? (raw as { path: string }).path
+        : null;
+  if (!path) {
+    return null;
+  }
+  const type = typeof raw === 'object' ? (raw as { type?: unknown }).type : undefined;
+  return {
+    path: path.startsWith('/') ? path : `${dir}/${path}`,
+    isDir: type === 0 ? true : type === 1 ? false : null,
+  };
+}
+
 /** .json files in MyStyle and up to two folder levels down, likeliest names first. */
 async function findJsonFiles(): Promise<string[]> {
   const found: string[] = [];
   const walk = async (dir: string, depth: number) => {
-    let entries: string[] = [];
+    let entries: unknown[] = [];
     try {
-      entries = (await FileUtils.listFiles(dir)) ?? [];
+      entries = ((await FileUtils.listFiles(dir)) as unknown[] | null) ?? [];
     } catch (e) {
-      log(`listFiles ${dir} failed: ${e instanceof Error ? e.message : String(e)}`);
+      log(`listFiles ${shortPath(dir)} failed: ${e instanceof Error ? e.message : String(e)}`);
     }
-    for (const entry of entries) {
-      const path = entry.startsWith('/') ? entry : `${dir}/${entry}`;
-      const name = path.slice(path.lastIndexOf('/') + 1);
-      if (/\.json$/i.test(name)) {
-        found.push(path);
-      } else if (depth > 0 && !name.includes('.')) {
-        await walk(path, depth - 1);
+    for (const raw of entries) {
+      const entry = toEntry(raw, dir);
+      if (!entry) {
+        log(`listFiles: unexpected entry ${brief(raw, 80)}`);
+        continue;
+      }
+      const name = entry.path.slice(entry.path.lastIndexOf('/') + 1);
+      const isDir = entry.isDir ?? !name.includes('.');
+      if (!isDir && /\.json$/i.test(name)) {
+        found.push(entry.path);
+      } else if (isDir && depth > 0) {
+        await walk(entry.path, depth - 1);
       }
     }
   };
-  await walk(MYSTYLE_DIR, 2);
+  try {
+    await walk(MYSTYLE_DIR, 2);
+  } catch (e) {
+    log(`key file search failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
   const rank = (p: string) => (/marvin/i.test(p) ? 0 : /config|key/i.test(p) ? 1 : 2);
-  return found.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
+  const sorted = found.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
+  return [LEGACY_KEY_FILE, ...sorted.filter(p => p !== LEGACY_KEY_FILE)];
 }
 
-const shortPath = (p: string) => p.replace(/^\/storage\/emulated\/0\//, '');
+function shortPath(p: string): string {
+  return p.replace(/^\/storage\/emulated\/0\//, '');
+}
 
 /** Where the key file was last found, for the Settings screen. */
 export let keyFilePath: string | null = null;
@@ -151,7 +187,15 @@ export async function loadSettings(): Promise<Config> {
     log(`settings read failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (!config || !isComplete(config)) {
-    config = (await readConfigFile()) ?? config;
+    try {
+      config = (await readConfigFile()) ?? config;
+    } catch (e) {
+      // A malformed key file is worth reporting; any other failure just means "no key file".
+      if (e instanceof ConfigError) {
+        throw e;
+      }
+      log(`key file lookup failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
   config = config ?? normalize({});
 
