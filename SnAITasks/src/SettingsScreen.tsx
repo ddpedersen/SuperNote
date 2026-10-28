@@ -1,5 +1,5 @@
 /**
- * Settings: enter/test/save the Anthropic API key and Marvin token.
+ * Settings: pick the AI service and task app, then enter/test/save their keys.
  * Black-on-white, large touch targets, for e-ink.
  *
  * @format
@@ -8,8 +8,6 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {
-  DEFAULT_MODEL,
-  DEFAULT_TITLE_SUFFIX,
   ensurePermission,
   hasPendingSave,
   isStoreUnreadable,
@@ -17,11 +15,14 @@ import {
   KEY_FILE_TEMPLATE,
   keyFilePath,
   readConfigFile,
+  missingKeys,
+  normalize,
   saveSettings,
+  type AiProviderId,
   type Config,
+  type TaskAppId,
 } from './config';
-import {checkKey} from './claude';
-import {checkToken} from './marvin';
+import {AI_PROVIDERS, aiFor, TASK_APPS, taskAppFor} from './providers';
 import {logError} from './log';
 
 type Props = {
@@ -33,12 +34,43 @@ type Props = {
   onCancel: () => void;
 };
 
-const EMPTY: Config = {
-  anthropicApiKey: '',
-  marvinApiToken: '',
-  model: DEFAULT_MODEL,
-  titleSuffix: DEFAULT_TITLE_SUFFIX,
-};
+const EMPTY: Config = normalize({});
+
+/** Dropdown: shows the current choice; tap to list the options. */
+function Select<T extends string>(props: {
+  label: string;
+  value: T;
+  options: {value: T; label: string}[];
+  onChange: (v: T) => void;
+  hint?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = props.options.find(o => o.value === props.value);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{props.label}</Text>
+      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+      <Pressable style={styles.select} onPress={() => setOpen(!open)}>
+        <Text style={styles.selectText}>{current?.label ?? props.value}</Text>
+        <Text style={styles.selectText}>{open ? '▴' : '▾'}</Text>
+      </Pressable>
+      {open &&
+        props.options.map(o => (
+          <Pressable
+            key={o.value}
+            style={[styles.selectOption, o.value === props.value && styles.selectOptionOn]}
+            onPress={() => {
+              props.onChange(o.value);
+              setOpen(false);
+            }}>
+            <Text style={[styles.selectText, o.value === props.value && styles.selectTextOn]}>
+              {o.label}
+            </Text>
+          </Pressable>
+        ))}
+    </View>
+  );
+}
 
 function Field(props: {
   label: string;
@@ -124,13 +156,15 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
     if (!(await ensurePermission('plugin.permission.INTERNET'))) {
       return ['✗ Network access was denied.'];
     }
+    const config = normalize(form);
+    const missing = missingKeys(config);
+    if (missing.length) {
+      return missing.map(m => `✗ Enter your ${m}`);
+    }
+    const ai = aiFor(config);
     return Promise.all([
-        form.anthropicApiKey.trim()
-          ? checkKey(form.anthropicApiKey.trim(), form.model.trim() || DEFAULT_MODEL)
-          : '✗ Enter an Anthropic API key',
-        form.marvinApiToken.trim()
-          ? checkToken(form.marvinApiToken.trim())
-          : '✗ Enter a Marvin API token',
+      ai.checkKey(ai.apiKey(config), ai.model(config)),
+      taskAppFor(config).checkToken(config),
     ]);
   };
 
@@ -166,13 +200,54 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
       )}
       {notice && <Text style={styles.notice}>{notice}</Text>}
 
-      <Field
-        label="Anthropic API key"
-        hint="console.anthropic.com → API keys (starts with sk-ant-)"
-        value={form.anthropicApiKey}
-        onChange={update('anthropicApiKey')}
-        secret
-        revealed={revealed}
+      <Select<AiProviderId>
+        label="AI service"
+        value={form.aiProvider}
+        options={(Object.keys(AI_PROVIDERS) as AiProviderId[]).map(id => ({
+          value: id,
+          label: AI_PROVIDERS[id].label,
+        }))}
+        onChange={v => setForm(f => ({...f, aiProvider: v}))}
+      />
+      {form.aiProvider === 'anthropic' ? (
+        <>
+          <Field
+            label={AI_PROVIDERS.anthropic.keyLabel}
+            hint={AI_PROVIDERS.anthropic.keyHint}
+            value={form.anthropicApiKey}
+            onChange={update('anthropicApiKey')}
+            secret
+            revealed={revealed}
+          />
+          <Field label="Claude model" value={form.anthropicModel} onChange={update('anthropicModel')} />
+        </>
+      ) : (
+        <>
+          <Field
+            label={AI_PROVIDERS.openai.keyLabel}
+            hint={AI_PROVIDERS.openai.keyHint}
+            value={form.openaiApiKey}
+            onChange={update('openaiApiKey')}
+            secret
+            revealed={revealed}
+          />
+          <Field
+            label="OpenAI model"
+            hint="Any model that reads images and supports structured outputs. Tap Test to check it."
+            value={form.openaiModel}
+            onChange={update('openaiModel')}
+          />
+        </>
+      )}
+
+      <Select<TaskAppId>
+        label="Task app"
+        value={form.taskApp}
+        options={(Object.keys(TASK_APPS) as TaskAppId[]).map(id => ({
+          value: id,
+          label: TASK_APPS[id].label,
+        }))}
+        onChange={v => setForm(f => ({...f, taskApp: v}))}
       />
       <Field
         label="Marvin API token"
@@ -182,17 +257,19 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         secret
         revealed={revealed}
       />
-      <Pressable onPress={() => setRevealed(!revealed)} hitSlop={12}>
-        <Text style={styles.link}>{revealed ? 'Hide keys' : 'Show keys'}</Text>
-      </Pressable>
-
-      <Field label="Claude model" value={form.model} onChange={update('model')} />
       <Field
         label="Add to each task title"
         hint="Marvin shortcuts, e.g. +today or #Project. Leave blank for none."
         value={form.titleSuffix}
         onChange={update('titleSuffix')}
       />
+      <Pressable onPress={() => setRevealed(!revealed)} hitSlop={12}>
+        <Text style={styles.link}>{revealed ? 'Hide keys' : 'Show keys'}</Text>
+      </Pressable>
+      <Text style={styles.hint}>
+        Keys for each service are kept when you switch, so you can switch back without
+        re-entering them.
+      </Text>
 
       {messages.map((m, i) => (
         <Text key={i} style={styles.message}>
@@ -214,10 +291,11 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
       {showFormat && (
         <View style={styles.notice}>
           <Text style={styles.hint}>
-            Instead of typing keys here, make a text file with this content, replace the two
+            Instead of typing keys here, make a text file with this content, replace the
             PASTE_ values with your keys, and save it with a name ending in .json (for example
-            marvin-keys.json). Put it anywhere in MyStyle, e.g. with the Supernote Partner app.
-            The plugin finds it automatically.
+            ai-task-keys.json). Put it anywhere in MyStyle, e.g. with the Supernote Partner app.
+            The plugin finds it automatically. To use OpenAI, set "aiProvider" to "openai" and
+            fill in "openaiApiKey" instead.
           </Text>
           <Text style={styles.code}>{KEY_FILE_TEMPLATE}</Text>
           <Text style={styles.hint}>
@@ -227,8 +305,8 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         </View>
       )}
       <Text style={styles.hint}>
-        Keys are stored on this device in MyStyle/SnMarvin/settings.note and only sent to
-        Anthropic and Marvin.
+        Keys are stored on this device in MyStyle/SnMarvin/settings.note. Each key is only sent
+        to its own service.
       </Text>
     </ScrollView>
   );
@@ -259,6 +337,25 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
   },
+  select: {
+    borderWidth: 2,
+    borderColor: '#000000',
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  selectText: {fontSize: 26, color: '#000000'},
+  selectTextOn: {color: '#ffffff'},
+  selectOption: {
+    borderWidth: 2,
+    borderTopWidth: 0,
+    borderColor: '#000000',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  selectOptionOn: {backgroundColor: '#000000'},
   row: {flexDirection: 'row', justifyContent: 'center', marginTop: 16, flexWrap: 'wrap'},
   button: {
     borderWidth: 3,
