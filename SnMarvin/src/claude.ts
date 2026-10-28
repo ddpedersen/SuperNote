@@ -1,12 +1,12 @@
 /**
- * Sends a captured image (or selected text) to Claude and gets back the
- * tasks to create. Uses the REST API directly: the Anthropic TypeScript SDK
+ * Sends captured page images, a lasso image, or text to Claude and gets back
+ * the tasks to create. Uses the REST API directly: the Anthropic TypeScript SDK
  * does not support React Native.
  */
 import { log, brief } from './log';
 import { fetchWithTimeout } from './http';
 
-export type Mode = 'tasks' | 'research';
+export type Mode = 'tasks' | 'research' | 'marked';
 
 export type ExtractedTask = {
   title: string;
@@ -14,7 +14,11 @@ export type ExtractedTask = {
   dueDate: string; // YYYY-MM-DD or ""
 };
 
-export type Input = { kind: 'image'; base64: string } | { kind: 'text'; text: string };
+/** What one Claude request contains. Pages are 0-based. */
+export type Content =
+  | { kind: 'image'; base64: string }
+  | { kind: 'pages'; images: { page: number; base64: string }[] }
+  | { kind: 'text'; text: string };
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -51,6 +55,7 @@ If nothing in the input is a task, return an empty list. Never invent tasks.`;
 const MODE_INSTRUCTIONS: Record<Mode, string> = {
   tasks: 'Extract every to-do item. Look for checkboxes, bullets, "todo"/"TODO", arrows, and action phrases. Skip items that are checked off or crossed out, and skip plain notes that aren\'t actions. If the whole input is a single action, return one task.',
   research: 'The user marked this as something to research. Return one task titled "Research: <topic>" (or one per clearly separate topic). In the note, write 2-5 short bullet points: the specific questions to answer and useful search terms, based on what\'s written.',
+  marked: 'The user marks each item they want in Marvin as a heading with the diagonal-line (hatched) heading style. Create exactly one task per marked item and ignore everything else. Text items were read by the tablet\'s handwriting recognition and may contain recognition errors; fix obvious ones. For page images, use only headings drawn with diagonal-line shading, not other heading styles or plain writing.',
 };
 
 export class ClaudeError extends Error {}
@@ -61,33 +66,49 @@ function today(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+const imageBlock = (base64: string) => ({
+  type: 'image',
+  source: { type: 'base64', media_type: 'image/png', data: base64 },
+});
+
+const kb = (base64: string) => Math.round((base64.length * 3) / 4 / 1024);
+
+function describe(input: Content): string {
+  switch (input.kind) {
+    case 'image':
+      return `image ${kb(input.base64)} KB`;
+    case 'pages':
+      return `${input.images.length} page(s) ${input.images.map(i => i.page + 1).join(',')}, ` +
+        `${input.images.reduce((n, i) => n + kb(i.base64), 0)} KB`;
+    case 'text':
+      return `text ${input.text.length} chars`;
+  }
+}
+
 export async function extractTasks(
   apiKey: string,
   model: string,
-  input: Input,
+  input: Content,
   mode: Mode,
 ): Promise<ExtractedTask[]> {
   const instruction = `Today is ${today()}.\n\n${MODE_INSTRUCTIONS[mode]}`;
   const content =
     input.kind === 'image'
-      ? [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/png', data: input.base64 },
-          },
-          { type: 'text', text: instruction },
-        ]
-      : [
-          { type: 'text', text: `<selected_text>\n${input.text}\n</selected_text>` },
-          { type: 'text', text: instruction },
-        ];
+      ? [imageBlock(input.base64), { type: 'text', text: instruction }]
+      : input.kind === 'pages'
+        ? [
+            ...input.images.flatMap(({ page, base64 }) => [
+              { type: 'text', text: `Page ${page + 1}:` },
+              imageBlock(base64),
+            ]),
+            { type: 'text', text: instruction },
+          ]
+        : [
+            { type: 'text', text: `<selected_text>\n${input.text}\n</selected_text>` },
+            { type: 'text', text: instruction },
+          ];
 
-  log(
-    `claude: ${model}, mode=${mode}, ` +
-      (input.kind === 'image'
-        ? `image ${Math.round((input.base64.length * 3) / 4 / 1024)} KB`
-        : `text ${input.text.length} chars`),
-  );
+  log(`claude: ${model}, mode=${mode}, ${describe(input)}`);
   const started = Date.now();
   let res: Response;
   try {

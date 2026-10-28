@@ -3,6 +3,8 @@
  * key/token checks.
  */
 const mockFiles = new Map<string, any[]>(); // note path -> page-0 elements
+const mockDirs = new Map<string, string[]>(); // dir -> entries (full paths)
+const mockText = new Map<string, string>(); // file path -> contents (read via fetch)
 
 jest.mock('sn-plugin-lib', () => ({
   PluginManager: {
@@ -12,6 +14,7 @@ jest.mock('sn-plugin-lib', () => ({
   FileUtils: {
     exists: jest.fn(async (p: string) => mockFiles.has(p)),
     makeDir: jest.fn(async () => true),
+    listFiles: jest.fn(async (dir: string) => mockDirs.get(dir) ?? []),
   },
   PluginCommAPI: {
     getNoteSystemTemplates: jest.fn(async () => [{name: 'style_white'}]),
@@ -54,11 +57,21 @@ function freshConfig() {
   return mod!;
 }
 
+const MS = '/storage/emulated/0/MyStyle';
+
+function useFileFetch() {
+  (globalThis as any).fetch = jest.fn(async (url: string) => ({
+    status: 0,
+    text: async () => mockText.get(url.replace('file://', '')) ?? '',
+  }));
+}
+
 beforeEach(() => {
   mockFiles.clear();
+  mockDirs.clear();
+  mockText.clear();
   jest.clearAllMocks();
-  // config.json absent
-  (globalThis as any).fetch = jest.fn(async () => ({status: 0, text: async () => ''}));
+  useFileFetch();
 });
 
 describe('store encoding', () => {
@@ -113,13 +126,34 @@ describe('settings persistence', () => {
     await expect(loadConfig()).rejects.toBeInstanceOf(SetupNeeded);
   });
 
-  it('falls back to config.json', async () => {
-    (globalThis as any).fetch = jest.fn(async () => ({
-      status: 0,
-      text: async () => JSON.stringify({anthropicApiKey: 'k', marvinApiToken: 't'}),
-    }));
+  it('finds a key file with any name in a MyStyle subfolder', async () => {
+    mockDirs.set(MS, [`${MS}/stickers`, `${MS}/template.png`, `${MS}/other.json`]);
+    mockDirs.set(`${MS}/stickers`, [`${MS}/stickers/my keys.json`]);
+    mockText.set(`${MS}/other.json`, '{"unrelated": true}');
+    mockText.set(
+      `${MS}/stickers/my keys.json`,
+      JSON.stringify({anthropicApiKey: 'k', marvinApiToken: 't'}),
+    );
+    const cfg = freshConfig();
+    expect((await cfg.loadConfig()).anthropicApiKey).toBe('k');
+    expect(cfg.keyFilePath).toBe('MyStyle/stickers/my keys.json');
+  });
+
+  it('explains curly quotes from a phone keyboard', async () => {
+    mockDirs.set(MS, [`${MS}/marvin.json`]);
+    mockText.set(`${MS}/marvin.json`, '{ “anthropicApiKey”: “k” }');
+    await expect(freshConfig().readConfigFile()).rejects.toThrow(/curly quotes/);
+  });
+
+  it('accepts the on-screen template once filled in', async () => {
+    const {KEY_FILE_TEMPLATE} = freshConfig();
+    mockDirs.set(MS, [`${MS}/marvin-keys.json`]);
+    mockText.set(
+      `${MS}/marvin-keys.json`,
+      KEY_FILE_TEMPLATE.replace('PASTE_ANTHROPIC_KEY', 'sk-ant-x').replace('PASTE_MARVIN_TOKEN', 'm'),
+    );
     const cfg = await freshConfig().loadConfig();
-    expect(cfg.anthropicApiKey).toBe('k');
+    expect(cfg).toMatchObject({anthropicApiKey: 'sk-ant-x', marvinApiToken: 'm', titleSuffix: '+today'});
   });
 
   it('refuses to save without both keys', async () => {

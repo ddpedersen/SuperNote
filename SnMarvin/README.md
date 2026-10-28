@@ -5,9 +5,14 @@ Send handwritten to-dos from a Supernote Manta to Claude, which extracts tasks a
 
 | Where | Button | What it does |
 |---|---|---|
-| NOTE sidebar | **Page → Marvin** | Renders the current page and adds every to-do Claude finds. |
+| NOTE sidebar | **Send to Marvin** | Menu: **This page**, **Whole note**, **Choose pages…** (e.g. `1-3, 5`), or **Marked headings**. |
 | NOTE lasso toolbar | **To Marvin** | Captures the selection, then asks **Tasks** or **Research**. |
 | DOC text-selection toolbar | **To Marvin** | Sends the selected text, same two choices. |
+
+**Marked headings** sends only items you set as a heading with the diagonal-line style, from the whole note.
+Their handwriting is recognized on the device and sent as text (cheap and fast); a page is sent as an image only
+if recognition fails. Sends over 10 pages ask first, with a time and cost estimate; pages go 5 per request, and
+tasks found so far are kept if a later batch fails.
 
 **Tasks** extracts the actionable items (checked-off/crossed-out ones are skipped).
 **Research** creates `Research: <topic>` with Claude's questions and search terms in the note.
@@ -34,8 +39,11 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
    Settings can be reopened from the gear or the **Settings** button on the plugin's result screen.
    If the gear doesn't appear after updating, uninstall the plugin and install it fresh.
 
-To skip typing keys on the device, copy `config.example.json` to `MyStyle/SnMarvin/config.json` with your keys
-filled in, then use **Import from config.json** on the Settings screen and **Save**. Delete the file afterwards.
+**Key file (no typing on the device):** create a text file with the content shown under **Key file format** on
+the Settings screen (same as `config.example.json`), fill in both keys, name it anything ending in `.json`, and put it
+anywhere in `MyStyle` (subfolders too), e.g. with the Supernote Partner app. It's used automatically while no keys are
+saved; **Import key file from MyStyle** + **Save** stores the keys so the file can be deleted. On a phone, use a
+plain-text editor (e.g. Runestone) or turn off Smart Punctuation so quotes stay straight.
 
 Settings are saved in `MyStyle/SnMarvin/settings.note` (a small note used as storage, since the plugin SDK has no
 file-write API) and survive plugin updates. Keys are base64-obfuscated there, not encrypted, so treat device

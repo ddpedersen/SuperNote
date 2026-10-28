@@ -14,6 +14,8 @@ import {
   hasPendingSave,
   isStoreUnreadable,
   loadSettings,
+  KEY_FILE_TEMPLATE,
+  keyFilePath,
   readConfigFile,
   saveSettings,
   type Config,
@@ -76,6 +78,7 @@ function Button({label, onPress, disabled}: {label: string; onPress: () => void;
 export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: Props) {
   const [form, setForm] = useState<Config>(EMPTY);
   const [revealed, setRevealed] = useState(false);
+  const [showFormat, setShowFormat] = useState(false);
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
 
@@ -137,10 +140,10 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
     run(async () => {
       const file = await readConfigFile();
       if (!file) {
-        return ['✗ No MyStyle/SnMarvin/config.json found.'];
+        return ['✗ No key file found in MyStyle. Tap "Key file format" below for how to make one.'];
       }
       setForm(file);
-      return ['Loaded config.json. Tap Save to keep it, then you can delete the file.'];
+      return [`Loaded ${keyFilePath ?? 'key file'}. Tap Save to keep the keys, then you can delete the file.`];
     });
 
   const save = () =>
@@ -203,8 +206,26 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         <Button label="Cancel" onPress={onCancel} disabled={busy} />
       </View>
       <Pressable onPress={busy ? undefined : importFile} hitSlop={12}>
-        <Text style={styles.link}>Import from MyStyle/SnMarvin/config.json</Text>
+        <Text style={styles.link}>Import key file from MyStyle</Text>
       </Pressable>
+      <Pressable onPress={() => setShowFormat(!showFormat)} hitSlop={12}>
+        <Text style={styles.link}>{showFormat ? 'Hide key file format' : 'Key file format'}</Text>
+      </Pressable>
+      {showFormat && (
+        <View style={styles.notice}>
+          <Text style={styles.hint}>
+            Instead of typing keys here, make a text file with this content, replace the two
+            PASTE_ values with your keys, and save it with a name ending in .json (for example
+            marvin-keys.json). Put it anywhere in MyStyle, e.g. with the Supernote Partner app.
+            The plugin finds it automatically.
+          </Text>
+          <Text style={styles.code}>{KEY_FILE_TEMPLATE}</Text>
+          <Text style={styles.hint}>
+            Keep the straight quotes ("). Phone keyboards may turn them into curly quotes; turn
+            off Smart Punctuation or use a plain-text editor.
+          </Text>
+        </View>
+      )}
       <Text style={styles.hint}>
         Keys are stored on this device in MyStyle/SnMarvin/settings.note and only sent to
         Anthropic and Marvin.
@@ -229,6 +250,7 @@ const styles = StyleSheet.create({
   },
   link: {fontSize: 24, color: '#000000', textDecorationLine: 'underline', marginVertical: 12},
   message: {fontSize: 26, color: '#000000', marginBottom: 8},
+  code: {fontSize: 22, lineHeight: 30, fontFamily: 'monospace', color: '#000000', marginVertical: 8},
   notice: {
     fontSize: 24,
     color: '#000000',
