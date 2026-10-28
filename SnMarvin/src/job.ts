@@ -6,7 +6,13 @@
 import { capturePage, captureLasso } from './capture';
 import { extractTasks, type Input, type Mode } from './claude';
 import { addTask } from './marvin';
-import { loadConfig, ensurePermission, SetupNeeded } from './config';
+import {
+  ensurePermission,
+  flushPendingSave,
+  hasPendingSave,
+  loadConfig,
+  SetupNeeded,
+} from './config';
 import { clearLog, log, logError } from './log';
 import { PluginManager } from 'sn-plugin-lib';
 
@@ -17,8 +23,10 @@ export type JobState =
   | { status: 'done'; added: string[]; failed: number; failReason?: string }
   | { status: 'error'; message: string }
   // Settings screen; `pending` is a send to resume once keys are saved.
-  | { status: 'setup'; pending?: { input: Input; mode: Mode } }
-  | { status: 'saved' };
+  // `fromGear`: opened from the plugin list, where no note is open.
+  | { status: 'setup'; pending?: { input: Input; mode: Mode }; fromGear?: boolean }
+  // `deferred`: keys are valid but only in memory until the plugin is used in a note.
+  | { status: 'saved'; deferred?: boolean };
 
 let state: JobState = { status: 'idle' };
 const listeners = new Set<(s: JobState) => void>();
@@ -41,17 +49,20 @@ export function reset() {
   set({ status: 'idle' });
 }
 
-export function openSettings() {
+export function openSettings(fromGear = false) {
   if (!isBusy()) {
-    set({ status: 'setup' });
+    set({ status: 'setup', fromGear });
   }
 }
 
 /** Called by the Settings screen after a successful save. */
-export async function settingsSaved() {
+export async function settingsSaved(result: 'saved' | 'deferred') {
   const pending = state.status === 'setup' ? state.pending : undefined;
+  if (result === 'deferred') {
+    armPenUpFlush();
+  }
   if (!pending) {
-    set({ status: 'saved' });
+    set({ status: 'saved', deferred: result === 'deferred' });
     return;
   }
   log('resuming send after setup');
@@ -74,6 +85,38 @@ async function begin(what: string) {
   clearLog();
   const device = await PluginManager.getDeviceType().catch(() => -1);
   log(`start: ${what} (deviceType ${device})`);
+  // Plugin buttons run inside a note, so gear-entered keys can be written now.
+  await flushPendingSave('plugin button');
+}
+
+let penUpSubscription: { remove: () => void } | null = null;
+let flushing = false;
+
+/**
+ * Also try the deferred save on the next pen stroke in any note, so keys get
+ * written even if the user doesn't open the plugin. Removed once saved.
+ */
+function armPenUpFlush() {
+  if (penUpSubscription) {
+    return;
+  }
+  penUpSubscription = PluginManager.registerEventListener('event_pen_up', 2, {
+    onMsg: async () => {
+      if (flushing) {
+        return;
+      }
+      flushing = true;
+      try {
+        await flushPendingSave('pen stroke');
+      } finally {
+        flushing = false;
+      }
+      if (!hasPendingSave()) {
+        penUpSubscription?.remove();
+        penUpSubscription = null;
+      }
+    },
+  });
 }
 
 /** Sidebar button: send the whole current page as tasks. */
