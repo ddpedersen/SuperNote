@@ -1,8 +1,8 @@
 /**
- * Plugin configuration, read from a JSON file the user copies onto the
- * device over USB (typing API keys on the e-ink keyboard is painful).
+ * Plugin settings: entered on the in-plugin Settings screen and saved with
+ * store.ts. A MyStyle/SnMarvin/config.json file (same keys) can be imported
+ * as an alternative to typing keys on the device:
  *
- *   MyStyle/SnMarvin/config.json
  *   {
  *     "anthropicApiKey": "sk-ant-...",
  *     "marvinApiToken": "...",
@@ -12,8 +12,9 @@
  */
 import { PluginManager } from 'sn-plugin-lib';
 import { log, mask } from './log';
+import { readStored, writeStored, STORE_DIR } from './store';
 
-export const CONFIG_PATH = '/storage/emulated/0/MyStyle/SnMarvin/config.json';
+export const CONFIG_PATH = `${STORE_DIR}/config.json`;
 
 export type Config = {
   anthropicApiKey: string;
@@ -22,10 +23,14 @@ export type Config = {
   titleSuffix: string;
 };
 
-const DEFAULT_MODEL = 'claude-opus-5-5';
-const DEFAULT_TITLE_SUFFIX = '+today';
+export const DEFAULT_MODEL = 'claude-opus-5-5';
+export const DEFAULT_TITLE_SUFFIX = '+today';
 
 export class ConfigError extends Error {}
+/** Thrown when keys are missing, so the UI can open the Settings screen. */
+export class SetupNeeded extends ConfigError {}
+
+let cached: Config | null = null;
 
 /** Asks for a runtime permission; true if granted (once or always). */
 export async function ensurePermission(permission: string): Promise<boolean> {
@@ -40,41 +45,87 @@ export async function ensurePermission(permission: string): Promise<boolean> {
   return choice === 1 || choice === 2;
 }
 
-export async function loadConfig(): Promise<Config> {
-  if (!(await ensurePermission('plugin.permission.FILE:READ'))) {
-    throw new ConfigError('File access was denied, so config.json cannot be read.');
-  }
+function normalize(json: Partial<Config>): Config {
+  return {
+    anthropicApiKey: (json.anthropicApiKey ?? '').trim(),
+    marvinApiToken: (json.marvinApiToken ?? '').trim(),
+    model: (json.model ?? '').trim() || DEFAULT_MODEL,
+    titleSuffix: (json.titleSuffix ?? DEFAULT_TITLE_SUFFIX).trim(),
+  };
+}
 
+const isComplete = (c: Config) => !!c.anthropicApiKey && !!c.marvinApiToken;
+
+/** Reads MyStyle/SnMarvin/config.json, or null if it doesn't exist. */
+export async function readConfigFile(): Promise<Config | null> {
   let raw: string;
   try {
     // fetch() on file:// works in the PluginHost; status is 0, so ignore res.ok.
     const res = await fetch('file://' + CONFIG_PATH);
     raw = await res.text();
-    log(`config read: status ${res.status}, ${raw.length} chars`);
+    log(`config.json: status ${res.status}, ${raw.length} chars`);
   } catch (e) {
-    log(`config read failed: ${e instanceof Error ? e.message : String(e)}`);
-    throw new ConfigError(`Missing ${CONFIG_PATH}`);
+    log(`config.json not readable: ${e instanceof Error ? e.message : String(e)}`);
+    return null;
   }
-
-  let json: Partial<Config>;
+  if (!raw.trim()) {
+    return null;
+  }
   try {
-    json = JSON.parse(raw);
+    return normalize(JSON.parse(raw));
   } catch (e) {
-    log(`config JSON error: ${e instanceof Error ? e.message : String(e)}`);
+    log(`config.json JSON error: ${e instanceof Error ? e.message : String(e)}`);
     throw new ConfigError('config.json is not valid JSON.');
   }
+}
 
-  const anthropicApiKey = (json.anthropicApiKey ?? '').trim();
-  const marvinApiToken = (json.marvinApiToken ?? '').trim();
-  log(`config keys: anthropic ${mask(anthropicApiKey)}, marvin ${mask(marvinApiToken)}`);
-  if (!anthropicApiKey || !marvinApiToken) {
-    throw new ConfigError('config.json needs anthropicApiKey and marvinApiToken.');
+/** Saved settings, falling back to config.json; never throws for "not set up yet". */
+export async function loadSettings(): Promise<Config> {
+  if (cached) {
+    return cached;
+  }
+  if (!(await ensurePermission('plugin.permission.FILE:READ'))) {
+    throw new ConfigError('File access was denied, so settings cannot be read.');
   }
 
-  return {
-    anthropicApiKey,
-    marvinApiToken,
-    model: (json.model ?? '').trim() || DEFAULT_MODEL,
-    titleSuffix: (json.titleSuffix ?? DEFAULT_TITLE_SUFFIX).trim(),
-  };
+  let config: Config | null = null;
+  try {
+    const stored = await readStored();
+    config = stored ? normalize(JSON.parse(stored)) : null;
+  } catch (e) {
+    log(`settings read failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!config || !isComplete(config)) {
+    config = (await readConfigFile()) ?? config;
+  }
+  config = config ?? normalize({});
+
+  log(`settings: anthropic ${mask(config.anthropicApiKey)}, marvin ${mask(config.marvinApiToken)}, model ${config.model}`);
+  if (isComplete(config)) {
+    cached = config;
+  }
+  return config;
+}
+
+/** Settings for a send; throws SetupNeeded if keys are missing. */
+export async function loadConfig(): Promise<Config> {
+  const config = await loadSettings();
+  if (!isComplete(config)) {
+    throw new SetupNeeded('Add your Anthropic API key and Marvin token in Settings.');
+  }
+  return config;
+}
+
+export async function saveSettings(input: Partial<Config>): Promise<Config> {
+  const config = normalize(input);
+  if (!isComplete(config)) {
+    throw new ConfigError('Both the Anthropic API key and the Marvin token are required.');
+  }
+  if (!(await ensurePermission('plugin.permission.FILE:WRITE'))) {
+    throw new ConfigError('File write access was denied, so settings cannot be saved.');
+  }
+  await writeStored(JSON.stringify(config));
+  cached = config;
+  log(`settings saved: anthropic ${mask(config.anthropicApiKey)}, marvin ${mask(config.marvinApiToken)}`);
+  return config;
 }

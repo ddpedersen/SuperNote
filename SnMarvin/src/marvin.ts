@@ -52,3 +52,24 @@ export async function addTask(
     );
   }
 }
+
+/** Checks the token with Marvin's credential test endpoint. */
+export async function checkToken(token: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(
+      'https://serv.amazingmarvin.com/api/test',
+      { method: 'POST', headers: { 'X-API-Token': token } },
+      20_000,
+    );
+  } catch (e) {
+    return `✗ Can't reach Marvin (${e instanceof Error ? e.message : 'network error'})`;
+  }
+  log(`checkToken: HTTP ${res.status}`);
+  if (res.ok) {
+    return '✓ Marvin token works';
+  }
+  return res.status === 401 || res.status === 403
+    ? '✗ Marvin rejected this token'
+    : `✗ Marvin error ${res.status}`;
+}

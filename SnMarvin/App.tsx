@@ -1,6 +1,7 @@
 /**
  * Send to Marvin — plugin view.
- * Shows the Tasks/Research choice for a selection, progress, and the result.
+ * Shows the Tasks/Research choice for a selection, progress, the result,
+ * and the Settings screen.
  * Plain black-on-white with no animation, for e-ink.
  *
  * @format
@@ -9,8 +10,17 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
-import {choose, getState, reset, subscribe, type JobState} from './src/job';
+import {
+  choose,
+  getState,
+  openSettings,
+  reset,
+  settingsSaved,
+  subscribe,
+  type JobState,
+} from './src/job';
 import {getLog} from './src/log';
+import SettingsScreen from './src/SettingsScreen';
 
 function close() {
   reset();
@@ -89,6 +99,12 @@ function Body({state}: {state: JobState}) {
           <Text style={styles.error}>{state.message}</Text>
         </>
       );
+
+    case 'saved':
+      return <Text style={styles.title}>✓ Settings saved</Text>;
+
+    case 'setup':
+      return null; // rendered by App
   }
 }
 
@@ -106,7 +122,25 @@ function App(): React.JSX.Element {
     });
   }, []);
 
-  const finished = state.status === 'done' || state.status === 'error';
+  const finished =
+    state.status === 'done' ||
+    state.status === 'error' ||
+    state.status === 'saved' ||
+    state.status === 'idle';
+
+  if (state.status === 'setup') {
+    return (
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <SettingsScreen
+            resuming={!!state.pending}
+            onSaved={settingsSaved}
+            onCancel={reset}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.backdrop}>
@@ -120,6 +154,7 @@ function App(): React.JSX.Element {
             label={showDetails ? 'Hide details' : 'Show details'}
             onPress={() => setShowDetails(!showDetails)}
           />
+          {finished && <Button label="Settings" onPress={openSettings} />}
           {finished && <Button label="Close" onPress={close} />}
         </View>
       </View>
@@ -175,8 +210,8 @@ const styles = StyleSheet.create({
     borderColor: '#000000',
     borderRadius: 8,
     paddingVertical: 18,
-    paddingHorizontal: 48,
-    marginHorizontal: 16,
+    paddingHorizontal: 36,
+    marginHorizontal: 12,
   },
   buttonText: {fontSize: 32, fontWeight: '600', color: '#000000'},
 });
