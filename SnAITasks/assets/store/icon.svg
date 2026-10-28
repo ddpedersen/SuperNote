@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
-  <!-- Checkmark: short arm down-left to the vertex, long arm up-right -->
-  <path d="M5 25 L17 37 L43 8" fill="none" stroke="#000" stroke-width="6"
+  <!-- Checkmark: short arm down-left to the vertex, long arm up-right into an arrow -->
+  <path d="M5 25 L17 37 L37.92 13.03" fill="none" stroke="#000" stroke-width="6"
         stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arrowhead: exporting, up and to the right -->
+  <polygon points="44.50,5.50 42.26,19.47 30.96,9.61" fill="#000" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
   <!-- A in the open space above the short arm -->
   <text x="15" y="20" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif"
         font-weight="bold" font-size="19" fill="#000">A</text>
