@@ -21,12 +21,18 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
 1. **Keys**
    - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription).
    - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token).
-2. **Config file.** Copy `config.example.json` to the device as `MyStyle/SnMarvin/config.json` and fill in both keys.
-   `model` and `titleSuffix` are optional.
-3. **Install.** Copy `SnMarvin.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
-4. **First use.** Allow the *file access* and *network* permission prompts ("Always allow" avoids being asked again).
+2. **Install.** Copy `SnMarvin.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
+3. **First use.** Open a note and tap any plugin button. With no keys saved, the **Settings** screen opens:
+   enter both keys, tap **Test**, then **Save & send** (the page or selection you started with is sent right after).
+   Allow the *file* and *network* permission prompts ("Always allow" avoids being asked again).
+   Settings can be reopened from the **Settings** button on the plugin's result screen.
 
-The keys stay in plain text on the device, so don't share that config file or a device backup of it.
+To skip typing keys on the device, copy `config.example.json` to `MyStyle/SnMarvin/config.json` with your keys
+filled in, then use **Import from config.json** on the Settings screen and **Save**. Delete the file afterwards.
+
+Settings are saved in `MyStyle/SnMarvin/settings.note` (a small note used as storage, since the plugin SDK has no
+file-write API) and survive plugin updates. Keys are base64-obfuscated there, not encrypted, so treat device
+backups accordingly. Saving needs a note to be open; it doesn't work from a PDF.
 
 ## Build
 
@@ -47,7 +53,7 @@ Keep `react-native` at **0.79.2** and `react` at **19.0.0** (fixed by the device
 button, permissions, config (keys masked), capture results, the Claude and Marvin HTTP status codes, and any error.
 A photo of that screen is usually enough to diagnose a problem. Keys are never shown in full.
 
-With ADB (optional):
+With ADB (optional; Supernote may block `adb shell`/`logcat` on some firmware):
 
 ```bash
 adb push build/outputs/SnMarvin.snplg /storage/emulated/0/MyStyle/
@@ -59,7 +65,7 @@ When reinstalling over an existing build, use **Add Plugin** and pick the new fi
 
 | Message | Fix |
 |---|---|
-| `Missing …/config.json` / `needs anthropicApiKey…` | Check the file path and both keys. |
+| `Settings can only be saved with a note open` | Open a note (not a PDF), then open the plugin. |
 | `File access was denied` / `Network access was denied` | Settings → Apps → Plugins → Send to Marvin → permissions. |
 | `Claude rejected the API key (401)` | Check `anthropicApiKey` and the Console billing status. |
 | `Marvin rejected the API token` | Use the API token from Marvin's API settings. |

@@ -1,15 +1,16 @@
 {
   "name": "Send to Marvin",
-  "desc": "Sends the current page, a lasso selection, or selected document text to Claude (Anthropic API) to extract to-dos, then adds them to your Amazing Marvin inbox. Note images and text are sent to api.anthropic.com; tasks are sent to serv.amazingmarvin.com. Requires API keys in MyStyle/SnMarvin/config.json.",
+  "desc": "Sends the current page, a lasso selection, or selected document text to Claude (Anthropic API) to extract to-dos, then adds them to your Amazing Marvin inbox. Uses your own Anthropic API key and Marvin API token, entered in the plugin's Settings and stored only on this device (MyStyle/SnMarvin/settings.note). Note images and text are sent to api.anthropic.com; task titles and notes are sent to serv.amazingmarvin.com. Nothing else leaves the device.",
   "iconPath": "assets/icon.png",
-  "versionName": "0.1.1",
-  "versionCode": "2",
+  "versionName": "0.2.0",
+  "versionCode": "3",
   "pluginID": "3k2g448bk976l61n",
   "pluginKey": "SnMarvin",
   "jsMainPath": "index",
   "author": "ddpedersen",
   "uses-permissions": [
     "plugin.permission.INTERNET",
-    "plugin.permission.FILE:READ"
+    "plugin.permission.FILE:READ",
+    "plugin.permission.FILE:WRITE"
   ]
 }

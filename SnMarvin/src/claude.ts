@@ -159,3 +159,29 @@ export async function extractTasks(
     throw new ClaudeError('Claude returned an unreadable response.');
   }
 }
+
+/** Checks the key and model with a free Models API lookup. */
+export async function checkKey(apiKey: string, model: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(
+      `https://api.anthropic.com/v1/models/${encodeURIComponent(model)}`,
+      { headers: { 'x-api-key': apiKey, 'anthropic-version': '2026-10-21' } },
+      20_000,
+    );
+  } catch (e) {
+    return `✗ Can't reach Anthropic (${e instanceof Error ? e.message : 'network error'})`;
+  }
+  log(`checkKey: HTTP ${res.status}`);
+  if (res.ok) {
+    const body = await res.json().catch(() => null);
+    return `✓ Key works (${body?.display_name ?? model})`;
+  }
+  if (res.status === 401 || res.status === 403) {
+    return '✗ Anthropic rejected this key';
+  }
+  if (res.status === 404) {
+    return `✗ Key works, but model "${model}" wasn't found`;
+  }
+  return `✗ Anthropic error ${res.status}`;
+}

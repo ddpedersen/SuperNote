@@ -6,7 +6,7 @@
 import { capturePage, captureLasso } from './capture';
 import { extractTasks, type Input, type Mode } from './claude';
 import { addTask } from './marvin';
-import { loadConfig, ensurePermission } from './config';
+import { loadConfig, ensurePermission, SetupNeeded } from './config';
 import { clearLog, log, logError } from './log';
 import { PluginManager } from 'sn-plugin-lib';
 
@@ -15,7 +15,10 @@ export type JobState =
   | { status: 'choose'; input: Input } // lasso captured, waiting for Tasks/Research
   | { status: 'working'; message: string }
   | { status: 'done'; added: string[]; failed: number; failReason?: string }
-  | { status: 'error'; message: string };
+  | { status: 'error'; message: string }
+  // Settings screen; `pending` is a send to resume once keys are saved.
+  | { status: 'setup'; pending?: { input: Input; mode: Mode } }
+  | { status: 'saved' };
 
 let state: JobState = { status: 'idle' };
 const listeners = new Set<(s: JobState) => void>();
@@ -36,6 +39,27 @@ export function subscribe(listener: (s: JobState) => void): () => void {
 
 export function reset() {
   set({ status: 'idle' });
+}
+
+export function openSettings() {
+  if (!isBusy()) {
+    set({ status: 'setup' });
+  }
+}
+
+/** Called by the Settings screen after a successful save. */
+export async function settingsSaved() {
+  const pending = state.status === 'setup' ? state.pending : undefined;
+  if (!pending) {
+    set({ status: 'saved' });
+    return;
+  }
+  log('resuming send after setup');
+  try {
+    await send(pending.input, pending.mode);
+  } catch (e) {
+    fail(e);
+  }
 }
 
 const isBusy = () => state.status === 'working';
@@ -108,7 +132,17 @@ export async function choose(mode: Mode) {
 
 async function send(input: Input, mode: Mode) {
   set({ status: 'working', message: 'Loading settings…' });
-  const config = await loadConfig();
+  let config;
+  try {
+    config = await loadConfig();
+  } catch (e) {
+    if (e instanceof SetupNeeded) {
+      log('no keys yet: opening Settings');
+      set({ status: 'setup', pending: { input, mode } });
+      return;
+    }
+    throw e;
+  }
   if (!(await ensurePermission('plugin.permission.INTERNET'))) {
     throw new Error('Network access was denied.');
   }
