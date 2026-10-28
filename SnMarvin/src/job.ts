@@ -49,7 +49,6 @@ export type JobState =
   | { status: 'menu'; note: NoteInfo }
   | { status: 'pickPages'; note: NoteInfo; error?: string }
   | { status: 'confirm'; pending: Pending; pageCount: number; estimate: string }
-  | { status: 'choose'; input: Content } // lasso/text captured, waiting for Tasks/Research
   | { status: 'working'; message: string }
   | { status: 'done'; added: string[]; failed: number; failReason?: string; emptyMessage?: string }
   | { status: 'error'; message: string }
@@ -256,21 +255,24 @@ export function confirmSend() {
 
 // ----------------------------------------------------------- lasso and DOC
 
-/** Lasso button: capture now (while the lasso is active), then let the user pick a mode. */
+/** Lasso button: capture now (while the lasso is active) and send as tasks. */
 export async function startLasso() {
   if (isBusy()) {
     return;
   }
   set({ status: 'working', message: 'Capturing selection…' });
+  let base64: string;
   try {
     await begin('lasso');
-    set({ status: 'choose', input: { kind: 'image', base64: await captureLasso() } });
+    base64 = await captureLasso();
   } catch (e) {
     fail(e);
+    return;
   }
+  await run({ source: { kind: 'image', base64 }, mode: 'tasks' });
 }
 
-/** DOC text-selection button: let the user pick a mode for the selected text. */
+/** DOC text-selection button: send the selected text as tasks. */
 export async function startText(text: string) {
   if (isBusy()) {
     return;
@@ -280,15 +282,7 @@ export async function startText(text: string) {
     set({ status: 'error', message: 'No text is selected.' });
     return;
   }
-  set({ status: 'choose', input: { kind: 'text', text } });
-}
-
-export async function choose(mode: Mode) {
-  if (state.status !== 'choose') {
-    return;
-  }
-  log(`mode: ${mode}`);
-  await run({ source: state.input, mode });
+  await run({ source: { kind: 'text', text }, mode: 'tasks' });
 }
 
 // -------------------------------------------------------------------- send

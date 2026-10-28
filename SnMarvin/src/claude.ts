@@ -6,7 +6,7 @@
 import { log, brief } from './log';
 import { fetchWithTimeout } from './http';
 
-export type Mode = 'tasks' | 'research' | 'marked';
+export type Mode = 'tasks' | 'marked';
 
 export type ExtractedTask = {
   title: string;
@@ -54,7 +54,6 @@ If nothing in the input is a task, return an empty list. Never invent tasks.`;
 
 const MODE_INSTRUCTIONS: Record<Mode, string> = {
   tasks: 'Extract every to-do item. Look for checkboxes, bullets, "todo"/"TODO", arrows, and action phrases. Skip items that are checked off or crossed out, and skip plain notes that aren\'t actions. If the whole input is a single action, return one task.',
-  research: 'The user marked this as something to research. Return one task titled "Research: <topic>" (or one per clearly separate topic). In the note, write 2-5 short bullet points: the specific questions to answer and useful search terms, based on what\'s written.',
   marked: 'The user marks each item they want in Marvin as a heading with the diagonal-line (hatched) heading style. Create exactly one task per marked item and ignore everything else. Text items were read by the tablet\'s handwriting recognition and may contain recognition errors; fix obvious ones. For page images, use only headings drawn with diagonal-line shading, not other heading styles or plain writing.',
 };
 

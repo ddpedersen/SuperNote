@@ -59,5 +59,5 @@ export function clearLog() {
 }
 
 export function getLog(): string[] {
-  return [`SnMarvin v${VERSION}`, ...lines];
+  return [`AI Task Export v${VERSION}`, ...lines];
 }

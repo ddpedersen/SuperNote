@@ -55,7 +55,7 @@ describe('extractTasks', () => {
   it('drops blank titles and returns [] for no tasks', async () => {
     mockFetch(200, claudeReply([{title: '  ', note: '', dueDate: ''}]));
     await expect(
-      extractTasks('k', 'm', {kind: 'text', text: 'hello'}, 'research'),
+      extractTasks('k', 'm', {kind: 'text', text: 'hello'}, 'tasks'),
     ).resolves.toEqual([]);
   });
 
