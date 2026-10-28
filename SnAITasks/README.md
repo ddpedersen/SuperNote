@@ -32,7 +32,7 @@ When it finishes, the plugin shows how many tasks were added, with their titles.
 1. **Keys** (one AI key plus your task app token)
    - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription), **or**
    - OpenAI API key: <https://platform.openai.com/api-keys> (pay-per-use API billing, separate from ChatGPT Plus).
-   - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token), **or**
+   - Marvin API token: Marvin → Features → API (use the regular *API Token*, not the full-access token), **or**
    - Todoist API token: Todoist → Settings → Integrations → Developer → API token.
 2. **Install.** Copy `SnAITasks-v<version>.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
 3. **Enter keys** either way:
