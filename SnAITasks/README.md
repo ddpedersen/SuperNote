@@ -3,8 +3,8 @@
 Send handwritten to-dos from a Supernote Manta to Claude, which extracts tasks and adds them to your task
 manager. Currently supports the [Amazing Marvin](https://amazingmarvin.com) inbox, scheduled for today.
 
-Internal identifiers (`pluginKey` SnMarvin, the `MyStyle/SnMarvin/` settings folder, the `.snplg` file name) keep
-the original name so existing installs and saved keys carry over.
+The package is `SnAITasks-v<version>.snplg`. Internal identifiers (`pluginKey`/package name `SnMarvin`, `pluginID`,
+and the `MyStyle/SnMarvin/` settings folder) keep the original name so existing installs and saved keys carry over.
 
 | Where | Button | What it does |
 |---|---|---|
@@ -28,7 +28,7 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
 1. **Keys**
    - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription).
    - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token).
-2. **Install.** Copy `SnMarvin.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
+2. **Install.** Copy `SnAITasks-v<version>.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
 3. **Enter keys** either way:
    - **Before using it:** Settings → Apps → Plugins → AI Task Export → ⚙. Enter both keys and tap **Save**.
      Both are tested first. Because no note is open there, the keys are held in memory until you **go to a note
@@ -57,7 +57,8 @@ Requires Node 18+. JS-only, so no Android SDK/Gradle is needed:
 
 ```bash
 npm install
-./buildPlugin.sh          # → build/outputs/SnMarvin.snplg   (Windows: .\buildPlugin.ps1)
+npm run package           # → build/outputs/SnAITasks-v<version>.snplg
+                          # (Windows: .\buildPlugin.ps1 → build\outputs\SnMarvin.snplg; rename it)
 npm test                  # unit tests for the Claude/Marvin request code
 ```
 
@@ -73,12 +74,12 @@ A photo of that screen is usually enough to diagnose a problem. Keys are never s
 With ADB (optional; Supernote may block `adb shell`/`logcat` on some firmware):
 
 ```bash
-adb push build/outputs/SnMarvin.snplg /storage/emulated/0/MyStyle/
+adb push build/outputs/SnAITasks-v*.snplg /storage/emulated/0/MyStyle/
 adb logcat -c && adb logcat -s ReactNativeJS:V PluginHost:V   # plugin logs are tagged [SnMarvin]
 ```
 
 When reinstalling over an existing build, use **Add Plugin** and pick the new file (or overwrite
-`MyStyle/Plugins/SnMarvin.snplg`). Reinstalling the existing entry reuses the old copy.
+the host's managed copy in `MyStyle/Plugins/`). Reinstalling the existing entry reuses the old copy.
 
 | Message | Fix |
 |---|---|
