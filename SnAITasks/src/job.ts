@@ -6,6 +6,7 @@
 import {
   captureLasso,
   capturePage,
+  recognizeLasso,
   getMarkedHeadings,
   getNoteInfo,
   type NoteInfo,
@@ -264,24 +265,31 @@ export function confirmSend() {
 
 // ----------------------------------------------------------- lasso and DOC
 
-/** Lasso button: capture now (while the lasso is active) and send as tasks. */
+/**
+ * Lasso button: everything selected becomes a task (literal mode). Captured
+ * now, while the lasso is active, with the tablet's own text recognition as
+ * a hint and fallback.
+ */
 export async function startLasso() {
   if (isBusy()) {
     return;
   }
   set({ status: 'working', message: 'Capturing selection…' });
   let base64: string;
+  let recognized: string;
   try {
     await begin('lasso');
     base64 = await captureLasso();
+    recognized = await recognizeLasso();
+    log(`lasso recognized: ${recognized ? `${recognized.length} chars` : 'nothing'}`);
   } catch (e) {
     fail(e);
     return;
   }
-  await run({ source: { kind: 'image', base64 }, mode: 'tasks' });
+  await run({ source: { kind: 'image', base64, recognized }, mode: 'selection' });
 }
 
-/** DOC text-selection button: send the selected text as tasks. */
+/** DOC text-selection button: the selected text becomes a task (literal mode). */
 export async function startText(text: string) {
   if (isBusy()) {
     return;
@@ -291,10 +299,22 @@ export async function startText(text: string) {
     set({ status: 'error', message: 'No text is selected.' });
     return;
   }
-  await run({ source: { kind: 'text', text }, mode: 'tasks' });
+  await run({ source: { kind: 'text', text }, mode: 'selection' });
 }
 
 // -------------------------------------------------------------------- send
+
+/** The selection as a task when the AI returns none: first line as title, rest as note. */
+function selectionFallback(source: Content): ExtractedTask {
+  const text =
+    source.kind === 'text' ? source.text : source.kind === 'image' ? source.recognized ?? '' : '';
+  const [first = '', ...rest] = text.trim().split(/\n+/);
+  return {
+    title: first.trim().slice(0, 200) || 'Supernote selection (handwriting not readable)',
+    note: rest.join('\n').trim(),
+    dueDate: '',
+  };
+}
 
 /** Runs the selected AI provider. */
 function extract(config: Config, input: Content, mode: Mode): Promise<ExtractedTask[]> {
@@ -414,7 +434,13 @@ async function send({ source, mode }: Pending) {
     }
   } else {
     set({ status: 'working', message: `Asking ${aiFor(config).label}…` });
-    await results.add(await extract(config, source, mode));
+    let tasks = await extract(config, source, mode);
+    if (mode === 'selection' && !tasks.length) {
+      // A selection always becomes a task, even if the AI found nothing to do.
+      log('selection: AI returned no tasks; using the selection text');
+      tasks = [selectionFallback(source)];
+    }
+    await results.add(tasks);
   }
 
   log(`done: ${results.added.length} added, ${results.failed} failed`);

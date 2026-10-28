@@ -174,6 +174,40 @@ export async function getMarkedHeadings(
   return result;
 }
 
+/**
+ * The tablet's own reading of the lasso selection (handwriting recognition
+ * plus any typed text boxes). Best effort: '' if anything fails. Must run
+ * while the lasso is active.
+ */
+export async function recognizeLasso(): Promise<string> {
+  let elements: Array<PageElement & { textBox?: { textContentFull?: string } }> = [];
+  try {
+    elements = unwrap(await PluginCommAPI.getLassoElements(), 'getLassoElements');
+    const typed = elements
+      .map(e => e.textBox?.textContentFull?.trim() ?? '')
+      .filter(Boolean);
+    const strokes = elements.filter(e => e.type === 0);
+    let handwritten = '';
+    if (strokes.length) {
+      const notePath = unwrap<string>(await PluginCommAPI.getCurrentFilePath(), 'getCurrentFilePath');
+      const page = unwrap<number>(await PluginCommAPI.getCurrentPageNum(), 'getCurrentPageNum');
+      const size = unwrap<{ width: number; height: number }>(
+        await PluginFileAPI.getPageSize(notePath, page),
+        'getPageSize',
+      );
+      handwritten = (
+        unwrap<string>(await PluginCommAPI.recognizeElements(strokes, size), 'recognizeElements(lasso)') ?? ''
+      ).trim();
+    }
+    return [handwritten, ...typed].filter(Boolean).join('\n');
+  } catch (e) {
+    log(`lasso recognition failed: ${e instanceof Error ? e.message : String(e)}`);
+    return '';
+  } finally {
+    elements.forEach(e => e.uuid && PluginCommAPI.recycleElement(e.uuid));
+  }
+}
+
 /** Renders the current lasso selection to PNG. Must run while the lasso is active. */
 export async function captureLasso(): Promise<string> {
   const pngPath = `${await workDir()}/lasso-${Date.now()}.png`;

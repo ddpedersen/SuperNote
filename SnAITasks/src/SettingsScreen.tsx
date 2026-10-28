@@ -249,20 +249,41 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         }))}
         onChange={v => setForm(f => ({...f, taskApp: v}))}
       />
-      <Field
-        label="Marvin API token"
-        hint="Marvin → Settings → API → API Token"
-        value={form.marvinApiToken}
-        onChange={update('marvinApiToken')}
-        secret
-        revealed={revealed}
-      />
-      <Field
-        label="Add to each task title"
-        hint="Marvin shortcuts, e.g. +today or #Project. Leave blank for none."
-        value={form.titleSuffix}
-        onChange={update('titleSuffix')}
-      />
+      {form.taskApp === 'marvin' ? (
+        <>
+          <Field
+            label="Marvin API token"
+            hint="Marvin → Settings → API → API Token"
+            value={form.marvinApiToken}
+            onChange={update('marvinApiToken')}
+            secret
+            revealed={revealed}
+          />
+          <Field
+            label="Add to each task title"
+            hint="Marvin shortcuts, e.g. +today or #Project. Leave blank for none."
+            value={form.titleSuffix}
+            onChange={update('titleSuffix')}
+          />
+        </>
+      ) : (
+        <>
+          <Field
+            label="Todoist API token"
+            hint="Todoist → Settings → Integrations → Developer → API token. Tasks go to your Inbox."
+            value={form.todoistApiToken}
+            onChange={update('todoistApiToken')}
+            secret
+            revealed={revealed}
+          />
+          <Field
+            label="Due date when none is written"
+            hint='Todoist wording, e.g. "today" or "tomorrow". Leave blank for no due date.'
+            value={form.todoistDefaultDue}
+            onChange={update('todoistDefaultDue')}
+          />
+        </>
+      )}
       <Pressable onPress={() => setRevealed(!revealed)} hitSlop={12}>
         <Text style={styles.link}>{revealed ? 'Hide keys' : 'Show keys'}</Text>
       </Pressable>
@@ -295,7 +316,8 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
             PASTE_ values with your keys, and save it with a name ending in .json (for example
             ai-task-keys.json). Put it anywhere in MyStyle, e.g. with the Supernote Partner app.
             The plugin finds it automatically. To use OpenAI, set "aiProvider" to "openai" and
-            fill in "openaiApiKey" instead.
+            fill in "openaiApiKey". To use Todoist, set "taskApp" to "todoist" and fill in
+            "todoistApiToken".
           </Text>
           <Text style={styles.code}>{KEY_FILE_TEMPLATE}</Text>
           <Text style={styles.hint}>
