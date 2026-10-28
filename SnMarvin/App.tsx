@@ -10,6 +10,7 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import {choose, getState, reset, subscribe, type JobState} from './src/job';
+import {getLog} from './src/log';
 
 function close() {
   reset();
@@ -21,6 +22,19 @@ function Button({label, onPress}: {label: string; onPress: () => void}) {
     <Pressable style={styles.button} onPress={onPress}>
       <Text style={styles.buttonText}>{label}</Text>
     </Pressable>
+  );
+}
+
+/** Diagnostic log, sized to stay readable in a phone photo of the screen. */
+function Details() {
+  return (
+    <ScrollView style={styles.details}>
+      {getLog().map((line, i) => (
+        <Text key={i} style={styles.detailsLine}>
+          {line}
+        </Text>
+      ))}
+    </ScrollView>
   );
 }
 
@@ -80,11 +94,19 @@ function Body({state}: {state: JobState}) {
 
 function App(): React.JSX.Element {
   const [state, setState] = useState<JobState>(getState());
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     setState(getState());
-    return subscribe(setState);
+    return subscribe(s => {
+      setState(s);
+      if (s.status === 'choose' || s.status === 'done' || s.status === 'error') {
+        setShowDetails(false);
+      }
+    });
   }, []);
+
+  const finished = state.status === 'done' || state.status === 'error';
 
   return (
     <View style={styles.backdrop}>
@@ -92,12 +114,14 @@ function App(): React.JSX.Element {
         <Pressable style={styles.closeButton} onPress={close} hitSlop={16}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
-        <Body state={state} />
-        {(state.status === 'done' || state.status === 'error') && (
-          <View style={styles.row}>
-            <Button label="Close" onPress={close} />
-          </View>
-        )}
+        {showDetails ? <Details /> : <Body state={state} />}
+        <View style={styles.row}>
+          <Button
+            label={showDetails ? 'Hide details' : 'Show details'}
+            onPress={() => setShowDetails(!showDetails)}
+          />
+          {finished && <Button label="Close" onPress={close} />}
+        </View>
       </View>
     </View>
   );
@@ -111,8 +135,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   card: {
-    width: '80%',
-    maxHeight: '70%',
+    width: '90%',
+    maxHeight: '90%',
     padding: 40,
     borderWidth: 3,
     borderColor: '#000000',
@@ -138,6 +162,13 @@ const styles = StyleSheet.create({
   list: {marginBottom: 16},
   item: {fontSize: 28, color: '#000000', marginBottom: 12},
   error: {fontSize: 28, color: '#000000', marginBottom: 16},
+  details: {marginTop: 40, marginBottom: 8},
+  detailsLine: {
+    fontSize: 22,
+    lineHeight: 30,
+    color: '#000000',
+    fontFamily: 'monospace',
+  },
   row: {flexDirection: 'row', justifyContent: 'center', marginTop: 16},
   button: {
     borderWidth: 3,

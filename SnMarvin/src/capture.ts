@@ -9,11 +9,13 @@ import {
   PluginManager,
   PluginNoteAPI,
 } from 'sn-plugin-lib';
+import { log, brief } from './log';
 
 type Resp<T> = { success: boolean; result: T; error?: { message?: string } };
 
 function unwrap<T>(res: unknown, what: string): T {
   const r = res as Resp<T> | null | undefined;
+  log(`${what} -> ${brief(r)}`);
   if (!r || !r.success) {
     throw new Error(`${what} failed: ${r?.error?.message ?? 'no response'}`);
   }
@@ -29,7 +31,8 @@ async function workDir(): Promise<string> {
       throw new Error('Could not get the plugin directory.');
     }
     cachedDir = `${base}/capture`;
-    await FileUtils.makeDir(cachedDir);
+    const made = await FileUtils.makeDir(cachedDir);
+    log(`workDir ${cachedDir} (makeDir=${made})`);
   }
   return cachedDir;
 }
@@ -38,6 +41,7 @@ async function workDir(): Promise<string> {
 async function readBase64(path: string): Promise<string> {
   const res = await fetch('file://' + path);
   const blob = await res.blob();
+  log(`read ${path.split('/').pop()}: status ${res.status}, ${blob.size} bytes, ${blob.type || 'no type'}`);
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -62,7 +66,7 @@ async function readAndDelete(path: string): Promise<string> {
 /** Renders the current NOTE page to PNG. */
 export async function capturePage(): Promise<string> {
   // Flush unsaved strokes so the rendered page matches the screen.
-  await PluginNoteAPI.saveCurrentNote();
+  log(`saveCurrentNote -> ${brief(await PluginNoteAPI.saveCurrentNote())}`);
 
   const notePath = unwrap<string>(
     await PluginCommAPI.getCurrentFilePath(),

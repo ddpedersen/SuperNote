@@ -8,6 +8,7 @@ import {name as appName} from './app.json';
 
 import {PluginManager, PluginDocAPI} from 'sn-plugin-lib';
 import {startPage, startLasso, startText} from './src/job';
+import {log, brief} from './src/log';
 
 const BUTTON_PAGE = 100;
 const BUTTON_LASSO = 200;
@@ -17,7 +18,7 @@ AppRegistry.registerComponent(appName, () => App);
 
 PluginManager.init();
 
-console.log('[SnMarvin] plugin loaded');
+log('plugin loaded');
 
 const icon = Image.resolveAssetSource(require('./assets/icon.png')).uri;
 
@@ -47,7 +48,7 @@ PluginManager.registerButton(3, ['DOC'], {
 // before the plugin view mounts.
 PluginManager.registerButtonListener({
   onButtonPress: async event => {
-    console.log('[SnMarvin] button', event.id);
+    log(`button ${event.id} (pressEvent ${event.pressEvent})`);
     switch (event.id) {
       case BUTTON_PAGE:
         startPage();
@@ -57,6 +58,7 @@ PluginManager.registerButtonListener({
         break;
       case BUTTON_DOC_TEXT: {
         const res = await PluginDocAPI.getLastSelectedText();
+        log(`getLastSelectedText -> ${brief(res, 80)}`);
         startText(res?.success ? res.result ?? '' : '');
         break;
       }

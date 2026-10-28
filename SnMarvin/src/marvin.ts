@@ -4,6 +4,8 @@
  * a trailing "+today" schedules the task for today and is stripped.
  */
 import type { ExtractedTask } from './claude';
+import { log } from './log';
+import { fetchWithTimeout } from './http';
 
 const ADD_TASK_URL = 'https://serv.amazingmarvin.com/api/addTask';
 
@@ -28,16 +30,21 @@ export async function addTask(
 
   let res: Response;
   try {
-    res = await fetch(ADD_TASK_URL, {
+    res = await fetchWithTimeout(ADD_TASK_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'X-API-Token': token },
       body: JSON.stringify(body),
-    });
-  } catch {
-    throw new MarvinError('Could not reach Marvin. Check Wi-Fi.');
+    }, 30_000);
+  } catch (e) {
+    log(`marvin: network failure: ${e instanceof Error ? e.message : String(e)}`);
+    throw new MarvinError(
+      `Could not reach Marvin (${e instanceof Error ? e.message : 'network error'}). Check Wi-Fi.`,
+    );
   }
+  log(`marvin: HTTP ${res.status} for "${task.title.slice(0, 40)}"`);
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
+    log(`marvin: error body ${detail.slice(0, 200)}`);
     throw new MarvinError(
       res.status === 401 || res.status === 403
         ? 'Marvin rejected the API token.'
