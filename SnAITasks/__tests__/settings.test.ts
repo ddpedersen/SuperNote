@@ -14,7 +14,10 @@ jest.mock('sn-plugin-lib', () => ({
   FileUtils: {
     exists: jest.fn(async (p: string) => mockFiles.has(p)),
     makeDir: jest.fn(async () => true),
-    listFiles: jest.fn(async (dir: string) => mockDirs.get(dir) ?? []),
+    // Like the device: { path, type } objects, type 0 = folder, 1 = file.
+    listFiles: jest.fn(async (dir: string) =>
+      (mockDirs.get(dir) ?? []).map(path => ({path, type: mockDirs.has(path) ? 0 : 1})),
+    ),
   },
   PluginCommAPI: {
     getNoteSystemTemplates: jest.fn(async () => [{name: 'style_white'}]),
@@ -137,6 +140,22 @@ describe('settings persistence', () => {
     const cfg = freshConfig();
     expect((await cfg.loadConfig()).anthropicApiKey).toBe('k');
     expect(cfg.keyFilePath).toBe('MyStyle/stickers/my keys.json');
+  });
+
+  it('still finds MyStyle/SnMarvin/config.json when listing fails', async () => {
+    const {FileUtils} = require('sn-plugin-lib');
+    (FileUtils.listFiles as jest.Mock).mockRejectedValueOnce(new Error('Dir is not exists'));
+    mockText.set(`${MS}/SnMarvin/config.json`, JSON.stringify({anthropicApiKey: 'k', marvinApiToken: 't'}));
+    const cfg = freshConfig();
+    expect((await cfg.loadConfig()).marvinApiToken).toBe('t');
+    expect(cfg.keyFilePath).toBe('MyStyle/SnMarvin/config.json');
+  });
+
+  it('accepts plain string paths from listFiles too', async () => {
+    const {FileUtils} = require('sn-plugin-lib');
+    (FileUtils.listFiles as jest.Mock).mockResolvedValueOnce([`${MS}/keys.json`]);
+    mockText.set(`${MS}/keys.json`, JSON.stringify({anthropicApiKey: 'k2', marvinApiToken: 't'}));
+    expect((await freshConfig().loadConfig()).anthropicApiKey).toBe('k2');
   });
 
   it('explains curly quotes from a phone keyboard', async () => {
