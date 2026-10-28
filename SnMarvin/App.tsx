@@ -101,7 +101,21 @@ function Body({state}: {state: JobState}) {
       );
 
     case 'saved':
-      return <Text style={styles.title}>✓ Settings saved</Text>;
+      return state.deferred ? (
+        <>
+          <Text style={styles.title}>✓ Keys valid</Text>
+          <Text style={styles.message}>
+            One more step: go to a note and use the plugin once to save the keys before restarting
+            your device.
+          </Text>
+          <Text style={styles.hint}>
+            Any plugin button works. For example, lasso something, tap To Marvin, then ✕. Nothing is
+            sent until you choose Tasks or Research. Until then, the keys are only kept in memory.
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.title}>✓ Settings saved</Text>
+      );
 
     case 'setup':
       return null; // rendered by App
@@ -134,6 +148,7 @@ function App(): React.JSX.Element {
         <View style={styles.card}>
           <SettingsScreen
             resuming={!!state.pending}
+            fromGear={!!state.fromGear}
             onSaved={settingsSaved}
             onCancel={reset}
           />
@@ -154,7 +169,7 @@ function App(): React.JSX.Element {
             label={showDetails ? 'Hide details' : 'Show details'}
             onPress={() => setShowDetails(!showDetails)}
           />
-          {finished && <Button label="Settings" onPress={openSettings} />}
+          {finished && <Button label="Settings" onPress={() => openSettings()} />}
           {finished && <Button label="Close" onPress={close} />}
         </View>
       </View>
@@ -197,6 +212,7 @@ const styles = StyleSheet.create({
   list: {marginBottom: 16},
   item: {fontSize: 28, color: '#000000', marginBottom: 12},
   error: {fontSize: 28, color: '#000000', marginBottom: 16},
+  hint: {fontSize: 24, color: '#000000', marginTop: 16},
   details: {marginTop: 40, marginBottom: 8},
   detailsLine: {
     fontSize: 22,

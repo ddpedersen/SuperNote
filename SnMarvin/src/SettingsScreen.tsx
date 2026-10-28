@@ -11,6 +11,8 @@ import {
   DEFAULT_MODEL,
   DEFAULT_TITLE_SUFFIX,
   ensurePermission,
+  hasPendingSave,
+  isStoreUnreadable,
   loadSettings,
   readConfigFile,
   saveSettings,
@@ -23,7 +25,9 @@ import {logError} from './log';
 type Props = {
   /** True when a send is waiting on these settings. */
   resuming: boolean;
-  onSaved: () => void;
+  /** Opened from the plugin-list gear: no note is open, so saving is deferred. */
+  fromGear: boolean;
+  onSaved: (result: 'saved' | 'deferred') => void;
   onCancel: () => void;
 };
 
@@ -69,7 +73,7 @@ function Button({label, onPress, disabled}: {label: string; onPress: () => void;
   );
 }
 
-export default function SettingsScreen({resuming, onSaved, onCancel}: Props) {
+export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: Props) {
   const [form, setForm] = useState<Config>(EMPTY);
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,9 +82,22 @@ export default function SettingsScreen({resuming, onSaved, onCancel}: Props) {
   const update = (key: keyof Config) => (value: string) =>
     setForm(f => ({...f, [key]: value}));
 
+  const [notice, setNotice] = useState<string | null>(null);
+
   useEffect(() => {
     loadSettings()
-      .then(setForm)
+      .then(loaded => {
+        setForm(loaded);
+        if (hasPendingSave()) {
+          setNotice(
+            'Your keys are not saved yet. Open any note and use the plugin once to save them before restarting your device.',
+          );
+        } else if (isStoreUnreadable()) {
+          setNotice(
+            "Saved keys can't be shown here because no note is open. Entering keys here replaces them.",
+          );
+        }
+      })
       .catch(e => {
         logError('load settings', e);
         setMessages([e instanceof Error ? e.message : String(e)]);
@@ -100,20 +117,21 @@ export default function SettingsScreen({resuming, onSaved, onCancel}: Props) {
     }
   };
 
-  const test = () =>
-    run(async () => {
-      if (!(await ensurePermission('plugin.permission.INTERNET'))) {
-        return ['✗ Network access was denied.'];
-      }
-      return Promise.all([
+  const checkBoth = async (): Promise<string[]> => {
+    if (!(await ensurePermission('plugin.permission.INTERNET'))) {
+      return ['✗ Network access was denied.'];
+    }
+    return Promise.all([
         form.anthropicApiKey.trim()
           ? checkKey(form.anthropicApiKey.trim(), form.model.trim() || DEFAULT_MODEL)
           : '✗ Enter an Anthropic API key',
         form.marvinApiToken.trim()
           ? checkToken(form.marvinApiToken.trim())
           : '✗ Enter a Marvin API token',
-      ]);
-    });
+    ]);
+  };
+
+  const test = () => run(checkBoth);
 
   const importFile = () =>
     run(async () => {
@@ -127,8 +145,14 @@ export default function SettingsScreen({resuming, onSaved, onCancel}: Props) {
 
   const save = () =>
     run(async () => {
-      await saveSettings(form);
-      onSaved();
+      if (fromGear) {
+        // Only claim "keys valid" (and hold them in memory) if both checks pass.
+        const results = await checkBoth();
+        if (results.some(r => !r.startsWith('✓'))) {
+          return [...results, 'Not saved. Fix the key above and tap Save again.'];
+        }
+      }
+      onSaved(await saveSettings(form, fromGear));
     });
 
   return (
@@ -137,6 +161,7 @@ export default function SettingsScreen({resuming, onSaved, onCancel}: Props) {
       {resuming && (
         <Text style={styles.hint}>Add your keys to finish sending. Your selection is kept.</Text>
       )}
+      {notice && <Text style={styles.notice}>{notice}</Text>}
 
       <Field
         label="Anthropic API key"
@@ -204,6 +229,14 @@ const styles = StyleSheet.create({
   },
   link: {fontSize: 24, color: '#000000', textDecorationLine: 'underline', marginVertical: 12},
   message: {fontSize: 26, color: '#000000', marginBottom: 8},
+  notice: {
+    fontSize: 24,
+    color: '#000000',
+    borderWidth: 2,
+    borderColor: '#000000',
+    padding: 12,
+    marginBottom: 16,
+  },
   row: {flexDirection: 'row', justifyContent: 'center', marginTop: 16, flexWrap: 'wrap'},
   button: {
     borderWidth: 3,

@@ -130,6 +130,48 @@ describe('settings persistence', () => {
   });
 });
 
+describe('saving from the plugin-list gear (no note open)', () => {
+  const keys = {anthropicApiKey: 'sk-ant-abc', marvinApiToken: 'tok'};
+  const noNote = () =>
+    (PluginFileAPI.createNote as jest.Mock).mockResolvedValueOnce({
+      success: false,
+      error: {code: 102, message: 'no note context'},
+    });
+
+  it('defers the write, keeps keys usable, and flushes on next note use', async () => {
+    noNote();
+    const cfg = freshConfig();
+    await expect(cfg.saveSettings(keys, true)).resolves.toBe('deferred');
+    expect(mockFiles.size).toBe(0);
+    expect(cfg.hasPendingSave()).toBe(true);
+    await expect(cfg.loadConfig()).resolves.toMatchObject(keys); // in memory
+
+    await cfg.flushPendingSave('plugin button');
+    expect(cfg.hasPendingSave()).toBe(false);
+    expect(JSON.parse((await readStored())!)).toMatchObject(keys);
+  });
+
+  it('keeps the pending save if the flush still has no note', async () => {
+    noNote();
+    const cfg = freshConfig();
+    await cfg.saveSettings(keys, true);
+    noNote();
+    await cfg.flushPendingSave('pen stroke');
+    expect(cfg.hasPendingSave()).toBe(true);
+  });
+
+  it('saves immediately when the write works from the gear', async () => {
+    const cfg = freshConfig();
+    await expect(cfg.saveSettings(keys, true)).resolves.toBe('saved');
+    expect(cfg.hasPendingSave()).toBe(false);
+  });
+
+  it('still throws write errors when opened from a note', async () => {
+    noNote();
+    await expect(freshConfig().saveSettings(keys)).rejects.toThrow(/note open/);
+  });
+});
+
 describe('key checks', () => {
   const respond = (status: number, body: unknown = {}) =>
     ((globalThis as any).fetch = jest.fn(async () => ({

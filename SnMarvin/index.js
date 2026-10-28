@@ -7,7 +7,7 @@ import App from './App';
 import {name as appName} from './app.json';
 
 import {PluginManager, PluginDocAPI} from 'sn-plugin-lib';
-import {startPage, startLasso, startText} from './src/job';
+import {openSettings, startPage, startLasso, startText} from './src/job';
 import {log, brief} from './src/log';
 
 const BUTTON_PAGE = 100;
@@ -42,6 +42,15 @@ PluginManager.registerButton(3, ['DOC'], {
   name: 'To Marvin',
   icon,
   showType: 1,
+});
+
+// Settings gear on the plugin's page in Settings -> Apps -> Plugins.
+PluginManager.registerConfigButton();
+PluginManager.registerConfigButtonListener({
+  onClick: () => {
+    log('settings gear opened');
+    openSettings(true);
+  },
 });
 
 // Registered here rather than in App so the lasso is captured immediately,

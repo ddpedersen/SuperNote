@@ -22,10 +22,17 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
    - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription).
    - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token).
 2. **Install.** Copy `SnMarvin.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
-3. **First use.** Open a note and tap any plugin button. With no keys saved, the **Settings** screen opens:
-   enter both keys, tap **Test**, then **Save & send** (the page or selection you started with is sent right after).
+3. **Enter keys** either way:
+   - **Before using it:** Settings → Apps → Plugins → Send to Marvin → ⚙. Enter both keys and tap **Save**.
+     Both are tested first. Because no note is open there, the keys are held in memory until you **go to a note
+     and use the plugin once** (any button; e.g. lasso → To Marvin → ✕ sends nothing). Do that before restarting
+     the device. The plugin also tries to save on your next pen stroke in any note.
+   - **From a note:** tap any plugin button. With no keys saved, the Settings screen opens; enter both keys,
+     tap **Test**, then **Save & send** (the page or selection you started with is sent right after).
+
    Allow the *file* and *network* permission prompts ("Always allow" avoids being asked again).
-   Settings can be reopened from the **Settings** button on the plugin's result screen.
+   Settings can be reopened from the gear or the **Settings** button on the plugin's result screen.
+   If the gear doesn't appear after updating, uninstall the plugin and install it fresh.
 
 To skip typing keys on the device, copy `config.example.json` to `MyStyle/SnMarvin/config.json` with your keys
 filled in, then use **Import from config.json** on the Settings screen and **Save**. Delete the file afterwards.

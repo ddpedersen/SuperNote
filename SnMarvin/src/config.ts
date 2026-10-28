@@ -31,6 +31,13 @@ export class ConfigError extends Error {}
 export class SetupNeeded extends ConfigError {}
 
 let cached: Config | null = null;
+/** Keys entered where no note is open (plugin-list gear); written on the next note use. */
+let pendingSave: Config | null = null;
+/** True when settings.note exists but couldn't be read (e.g. no note open). */
+let storeUnreadable = false;
+
+export const hasPendingSave = () => pendingSave !== null;
+export const isStoreUnreadable = () => storeUnreadable;
 
 /** Asks for a runtime permission; true if granted (once or always). */
 export async function ensurePermission(permission: string): Promise<boolean> {
@@ -89,10 +96,12 @@ export async function loadSettings(): Promise<Config> {
   }
 
   let config: Config | null = null;
+  storeUnreadable = false;
   try {
     const stored = await readStored();
     config = stored ? normalize(JSON.parse(stored)) : null;
   } catch (e) {
+    storeUnreadable = true;
     log(`settings read failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (!config || !isComplete(config)) {
@@ -116,7 +125,15 @@ export async function loadConfig(): Promise<Config> {
   return config;
 }
 
-export async function saveSettings(input: Partial<Config>): Promise<Config> {
+/**
+ * Saves settings. With `deferIfNoNote` (opened from the plugin-list gear,
+ * where the note APIs don't work), a failed write keeps the settings in
+ * memory and returns 'deferred'; flushPendingSave() writes them later.
+ */
+export async function saveSettings(
+  input: Partial<Config>,
+  deferIfNoNote = false,
+): Promise<'saved' | 'deferred'> {
   const config = normalize(input);
   if (!isComplete(config)) {
     throw new ConfigError('Both the Anthropic API key and the Marvin token are required.');
@@ -124,8 +141,36 @@ export async function saveSettings(input: Partial<Config>): Promise<Config> {
   if (!(await ensurePermission('plugin.permission.FILE:WRITE'))) {
     throw new ConfigError('File write access was denied, so settings cannot be saved.');
   }
-  await writeStored(JSON.stringify(config));
+  try {
+    await writeStored(JSON.stringify(config));
+  } catch (e) {
+    if (!deferIfNoNote) {
+      throw e;
+    }
+    log(`settings write deferred: ${e instanceof Error ? e.message : String(e)}`);
+    cached = config;
+    pendingSave = config;
+    return 'deferred';
+  }
   cached = config;
+  pendingSave = null;
   log(`settings saved: anthropic ${mask(config.anthropicApiKey)}, marvin ${mask(config.marvinApiToken)}`);
-  return config;
+  return 'saved';
+}
+
+/** Writes settings entered from the gear, now that a note is open. Never throws. */
+export async function flushPendingSave(trigger: string): Promise<void> {
+  const config = pendingSave;
+  if (!config) {
+    return;
+  }
+  try {
+    await writeStored(JSON.stringify(config));
+    if (pendingSave === config) {
+      pendingSave = null;
+    }
+    log(`settings saved (deferred, on ${trigger})`);
+  } catch (e) {
+    log(`deferred save still pending (${trigger}): ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
