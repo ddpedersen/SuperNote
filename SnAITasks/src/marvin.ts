@@ -3,7 +3,7 @@
  * Tasks without a parentId land in the Inbox. Title autocompletion is on, so
  * a trailing "+today" schedules the task for today and is stripped.
  */
-import type { ExtractedTask } from './claude';
+import type { ExtractedTask } from './prompt';
 import { log } from './log';
 import { fetchWithTimeout } from './http';
 

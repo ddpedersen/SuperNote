@@ -99,18 +99,22 @@ function Body({state}: {state: JobState}) {
           <Text style={styles.title}>AI Task Export</Text>
           <Option
             label="This page"
-            hint={`Page ${currentPage + 1} of ${totalPages}: every to-do on it`}
+            hint={`Page ${currentPage + 1} of ${totalPages}: every To Do that AI finds on this page`}
             onPress={sendCurrentPage}
           />
           <Option
             label="Whole note"
-            hint={`All ${totalPages} page${totalPages === 1 ? '' : 's'}: every to-do in the note`}
+            hint={`All ${totalPages} page${totalPages === 1 ? '' : 's'}: every To Do that AI finds in the note`}
             onPress={sendWholeNote}
           />
-          <Option label="Choose pages…" hint="Pick pages, e.g. 1-3, 5" onPress={openPagePicker} />
+          <Option
+            label="Choose pages…"
+            hint="Every To Do that AI finds on the pages you choose, e.g. 1-3, 5"
+            onPress={openPagePicker}
+          />
           <Option
             label="Marked headings"
-            hint="Only items set as a heading with the diagonal-line style, from the whole note"
+            hint="AI only considers items set as a heading with the diagonal-line style, across the whole note"
             onPress={sendMarked}
           />
         </ScrollView>
@@ -146,7 +150,7 @@ function Body({state}: {state: JobState}) {
           <Text style={styles.title}>
             {n === 0 && state.failed === 0
               ? state.emptyMessage ?? 'No tasks found'
-              : `✓ ${n} task${n === 1 ? '' : 's'} added to Marvin`}
+              : `✓ ${n} task${n === 1 ? '' : 's'} added to ${state.appLabel}`}
           </Text>
           <ScrollView style={styles.list}>
             {state.added.map((t, i) => (

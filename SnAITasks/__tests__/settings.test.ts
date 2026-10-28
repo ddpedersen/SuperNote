@@ -116,9 +116,13 @@ describe('settings persistence', () => {
     await freshConfig().saveSettings(input);
     const cfg = await freshConfig().loadConfig();
     expect(cfg).toEqual({
+      aiProvider: 'anthropic',
       anthropicApiKey: 'sk-ant-abc',
+      anthropicModel: 'claude-opus-5-5',
+      openaiApiKey: '',
+      openaiModel: 'gpt-6-astra',
+      taskApp: 'marvin',
       marvinApiToken: 'tok',
-      model: 'claude-opus-5-5',
       titleSuffix: '+today',
     });
     expect(JSON.parse((await readStored())!).marvinApiToken).toBe('tok');
@@ -177,9 +181,46 @@ describe('settings persistence', () => {
 
   it('refuses to save without both keys', async () => {
     await expect(freshConfig().saveSettings({...input, marvinApiToken: ' '})).rejects.toThrow(
-      /required/,
+      /Missing: Marvin API token/,
     );
     expect(mockFiles.size).toBe(0);
+  });
+
+  it('keeps v0.5 settings (single "model" field) after upgrading', async () => {
+    // Exactly what v0.2-v0.5 wrote to settings.note.
+    mockFiles.set(STORE_PATH, [
+      {
+        type: 500,
+        textBox: {
+          textContentFull: encode(
+            JSON.stringify({
+              anthropicApiKey: 'sk-ant-old',
+              marvinApiToken: 'tok-old',
+              model: 'claude-sonnet-5-5',
+              titleSuffix: '',
+            }),
+          ),
+        },
+      },
+    ]);
+    const cfg = await freshConfig().loadConfig();
+    expect(cfg).toMatchObject({
+      aiProvider: 'anthropic',
+      anthropicApiKey: 'sk-ant-old',
+      anthropicModel: 'claude-sonnet-5-5',
+      taskApp: 'marvin',
+      marvinApiToken: 'tok-old',
+      titleSuffix: '',
+    });
+  });
+
+  it('needs only the selected AI key', async () => {
+    const {loadConfig, saveSettings} = freshConfig();
+    await saveSettings({aiProvider: 'openai', openaiApiKey: 'sk-oa', marvinApiToken: 'tok'});
+    expect(await loadConfig()).toMatchObject({aiProvider: 'openai', anthropicApiKey: ''});
+    await expect(
+      freshConfig().saveSettings({aiProvider: 'openai', anthropicApiKey: 'sk-ant', marvinApiToken: 't'}),
+    ).rejects.toThrow(/Missing: OpenAI API key/);
   });
 });
 

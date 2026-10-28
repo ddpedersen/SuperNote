@@ -1,9 +1,9 @@
 {
   "name": "AI Task Export",
-  "desc": "Uses Claude (Anthropic API) to turn handwritten to-dos into tasks in your task manager (currently Amazing Marvin). Send a page, chosen pages, a whole note, headings you mark, a lasso selection, or selected document text. Uses your own Anthropic API key and Marvin API token, stored only on this device (MyStyle/SnMarvin/settings.note) or in a key file you place in MyStyle. Note images and text are sent to api.anthropic.com; task titles and notes are sent to serv.amazingmarvin.com. Nothing else leaves the device.",
+  "desc": "Uses AI (Claude or OpenAI, your choice) to turn handwritten to-dos into tasks in your task manager (currently Amazing Marvin). Send a page, chosen pages, a whole note, headings you mark, a lasso selection, or selected document text. Uses your own API keys, stored only on this device (MyStyle/SnMarvin/settings.note) or in a key file you place in MyStyle. Note images and text are sent only to the AI service you select (api.anthropic.com or api.openai.com); task titles and notes are sent to serv.amazingmarvin.com. Nothing else leaves the device.",
   "iconPath": "assets/icon.png",
-  "versionName": "0.5.1",
-  "versionCode": "7",
+  "versionName": "0.6.0",
+  "versionCode": "8",
   "pluginID": "3k2g448bk976l61n",
   "pluginKey": "SnMarvin",
   "jsMainPath": "index",

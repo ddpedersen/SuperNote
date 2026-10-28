@@ -10,23 +10,38 @@ import { readStored, writeStored } from './store';
 
 export const MYSTYLE_DIR = '/storage/emulated/0/MyStyle';
 
+export type AiProviderId = 'anthropic' | 'openai';
+export type TaskAppId = 'marvin';
+
+/**
+ * Keys for every provider/app are kept, so switching back and forth in
+ * Settings doesn't lose them. Saved as JSON; see normalize() for older shapes.
+ */
 export type Config = {
+  aiProvider: AiProviderId;
   anthropicApiKey: string;
+  anthropicModel: string;
+  openaiApiKey: string;
+  openaiModel: string;
+  taskApp: TaskAppId;
   marvinApiToken: string;
-  model: string;
   titleSuffix: string;
 };
 
-export const DEFAULT_MODEL = 'claude-opus-5-5';
+export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
+export const DEFAULT_OPENAI_MODEL = 'gpt-6-astra';
 export const DEFAULT_TITLE_SUFFIX = '+today';
 
 /** Shown on the Settings screen so users can create the key file on a phone or computer. */
 export const KEY_FILE_TEMPLATE = `{
+  "aiProvider": "anthropic",
   "anthropicApiKey": "PASTE_ANTHROPIC_KEY",
+  "openaiApiKey": "",
+  "taskApp": "marvin",
   "marvinApiToken": "PASTE_MARVIN_TOKEN",
-  "model": "${DEFAULT_MODEL}",
   "titleSuffix": "${DEFAULT_TITLE_SUFFIX}"
 }`;
+const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken/;
 
 export class ConfigError extends Error {}
 /** Thrown when keys are missing, so the UI can open the Settings screen. */
@@ -54,16 +69,54 @@ export async function ensurePermission(permission: string): Promise<boolean> {
   return choice === 1 || choice === 2;
 }
 
-function normalize(json: Partial<Config>): Config {
+/** Settings as saved by v0.1-v0.5 (Claude + Marvin only). */
+type LegacyConfig = { model?: string };
+
+const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+/** Fills defaults and upgrades older saved settings/key files (single `model` field). */
+export function normalize(json: Partial<Config> & LegacyConfig): Config {
+  const aiProvider: AiProviderId = json.aiProvider === 'openai' ? 'openai' : 'anthropic';
+  const legacyModel = str(json.model);
   return {
-    anthropicApiKey: (json.anthropicApiKey ?? '').trim(),
-    marvinApiToken: (json.marvinApiToken ?? '').trim(),
-    model: (json.model ?? '').trim() || DEFAULT_MODEL,
-    titleSuffix: (json.titleSuffix ?? DEFAULT_TITLE_SUFFIX).trim(),
+    aiProvider,
+    anthropicApiKey: str(json.anthropicApiKey),
+    anthropicModel:
+      str(json.anthropicModel) || (aiProvider === 'anthropic' && legacyModel) || DEFAULT_ANTHROPIC_MODEL,
+    openaiApiKey: str(json.openaiApiKey),
+    openaiModel:
+      str(json.openaiModel) || (aiProvider === 'openai' && legacyModel) || DEFAULT_OPENAI_MODEL,
+    taskApp: 'marvin',
+    marvinApiToken: str(json.marvinApiToken),
+    titleSuffix: json.titleSuffix === undefined ? DEFAULT_TITLE_SUFFIX : str(json.titleSuffix),
   };
 }
 
-const isComplete = (c: Config) => !!c.anthropicApiKey && !!c.marvinApiToken;
+/** What's still missing for the selected AI and task app, e.g. ["OpenAI API key"]. */
+export function missingKeys(c: Config): string[] {
+  const missing: string[] = [];
+  if (c.aiProvider === 'anthropic' && !c.anthropicApiKey) {
+    missing.push('Anthropic API key');
+  }
+  if (c.aiProvider === 'openai' && !c.openaiApiKey) {
+    missing.push('OpenAI API key');
+  }
+  if (c.taskApp === 'marvin' && !c.marvinApiToken) {
+    missing.push('Marvin API token');
+  }
+  return missing;
+}
+
+const isComplete = (c: Config) => missingKeys(c).length === 0;
+
+/** For the diagnostic log; keys masked. */
+function describeConfig(c: Config): string {
+  const ai =
+    c.aiProvider === 'openai'
+      ? `openai ${c.openaiModel} key ${mask(c.openaiApiKey)}`
+      : `anthropic ${c.anthropicModel} key ${mask(c.anthropicApiKey)}`;
+  return `${ai}; ${c.taskApp} token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
+}
 
 /** Where earlier versions told users to put the key file; always checked first. */
 const LEGACY_KEY_FILE = `${MYSTYLE_DIR}/SnMarvin/config.json`;
@@ -133,7 +186,7 @@ export let keyFilePath: string | null = null;
 
 /**
  * Finds the key file: the first .json in MyStyle (any name, any subfolder up
- * to two levels) that contains anthropicApiKey or marvinApiToken. Null if none.
+ * to two levels) that contains an API key or token field. Null if none.
  */
 export async function readConfigFile(): Promise<Config | null> {
   const files = await findJsonFiles();
@@ -147,7 +200,7 @@ export async function readConfigFile(): Promise<Config | null> {
       log(`${shortPath(path)} not readable: ${e instanceof Error ? e.message : String(e)}`);
       continue;
     }
-    if (!/anthropicApiKey|marvinApiToken/.test(raw)) {
+    if (!KEY_FILE_FIELDS.test(raw)) {
       continue;
     }
     let json: Partial<Config>;
@@ -199,7 +252,7 @@ export async function loadSettings(): Promise<Config> {
   }
   config = config ?? normalize({});
 
-  log(`settings: anthropic ${mask(config.anthropicApiKey)}, marvin ${mask(config.marvinApiToken)}, model ${config.model}`);
+  log(`settings: ${describeConfig(config)}`);
   if (isComplete(config)) {
     cached = config;
   }
@@ -210,7 +263,7 @@ export async function loadSettings(): Promise<Config> {
 export async function loadConfig(): Promise<Config> {
   const config = await loadSettings();
   if (!isComplete(config)) {
-    throw new SetupNeeded('Add your Anthropic API key and Marvin token in Settings.');
+    throw new SetupNeeded(`Add your ${missingKeys(config).join(' and ')} in Settings.`);
   }
   return config;
 }
@@ -226,7 +279,7 @@ export async function saveSettings(
 ): Promise<'saved' | 'deferred'> {
   const config = normalize(input);
   if (!isComplete(config)) {
-    throw new ConfigError('Both the Anthropic API key and the Marvin token are required.');
+    throw new ConfigError(`Missing: ${missingKeys(config).join(', ')}.`);
   }
   if (!(await ensurePermission('plugin.permission.FILE:WRITE'))) {
     throw new ConfigError('File write access was denied, so settings cannot be saved.');
@@ -244,7 +297,7 @@ export async function saveSettings(
   }
   cached = config;
   pendingSave = null;
-  log(`settings saved: anthropic ${mask(config.anthropicApiKey)}, marvin ${mask(config.marvinApiToken)}`);
+  log(`settings saved: ${describeConfig(config)}`);
   return 'saved';
 }
 

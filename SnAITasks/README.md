@@ -1,7 +1,8 @@
 # AI Task Export (Supernote plugin)
 
-Send handwritten to-dos from a Supernote Manta to Claude, which extracts tasks and adds them to your task
-manager. Currently supports the [Amazing Marvin](https://amazingmarvin.com) inbox, scheduled for today.
+Send handwritten to-dos from a Supernote Manta to an AI model (Claude or OpenAI), which extracts tasks and adds them
+to your task manager. Currently supports the [Amazing Marvin](https://amazingmarvin.com) inbox, scheduled for today.
+The AI service and task app are chosen once in Settings (dropdowns); keys for each are kept when switching.
 
 The package is `SnAITasks-v<version>.snplg`. Internal identifiers (`pluginKey`/package name `SnMarvin`, `pluginID`,
 and the `MyStyle/SnMarvin/` settings folder) keep the original name so existing installs and saved keys carry over.
@@ -25,8 +26,9 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
 
 ## Setup
 
-1. **Keys**
-   - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription).
+1. **Keys** (one AI key plus your task app token)
+   - Anthropic API key: <https://console.anthropic.com/settings/keys> (pay-per-use API billing, separate from a Claude.ai subscription), **or**
+   - OpenAI API key: <https://platform.openai.com/api-keys> (pay-per-use API billing, separate from ChatGPT Plus).
    - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token).
 2. **Install.** Copy `SnAITasks-v<version>.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
 3. **Enter keys** either way:

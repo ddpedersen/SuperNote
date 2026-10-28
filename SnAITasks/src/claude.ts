@@ -1,88 +1,29 @@
 /**
- * Sends captured page images, a lasso image, or text to Claude and gets back
- * the tasks to create. Uses the REST API directly: the Anthropic TypeScript SDK
+ * Claude provider: sends captured page images, a lasso image, or text to
+ * the Claude Messages API and gets back the tasks to create. Uses the REST API directly: the Anthropic TypeScript SDK
  * does not support React Native.
  */
 import { log, brief } from './log';
 import { fetchWithTimeout } from './http';
-
-export type Mode = 'tasks' | 'marked';
-
-export type ExtractedTask = {
-  title: string;
-  note: string;
-  dueDate: string; // YYYY-MM-DD or ""
-};
-
-/** What one Claude request contains. Pages are 0-based. */
-export type Content =
-  | { kind: 'image'; base64: string }
-  | { kind: 'pages'; images: { page: number; base64: string }[] }
-  | { kind: 'text'; text: string };
+import {
+  describe,
+  instructionFor,
+  parseTasks,
+  SYSTEM_PROMPT,
+  TASKS_SCHEMA,
+  type Content,
+  type ExtractedTask,
+  type Mode,
+} from './prompt';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
-const TASKS_SCHEMA = {
-  type: 'object',
-  properties: {
-    tasks: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          note: { type: 'string' },
-          dueDate: { type: 'string' },
-        },
-        required: ['title', 'note', 'dueDate'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['tasks'],
-  additionalProperties: false,
-};
-
-const SYSTEM_PROMPT = `You turn handwritten notes from a Supernote e-ink tablet into tasks for the Amazing Marvin to-do app.
-
-Each task you return becomes one Marvin task, so:
-- title: short and actionable, starting with a verb where natural (e.g. "Call Dana about the quote"). Keep the writer's wording and names; fix obvious handwriting-recognition errors. No dates, tags, or symbols like +today, #, @ in the title.
-- note: extra detail written alongside the item that doesn't fit in the title, otherwise "".
-- dueDate: YYYY-MM-DD only when a due date is written or clearly implied (resolve relative dates like "Fri" against today's date), otherwise "".
-
-If nothing in the input is a task, return an empty list. Never invent tasks.`;
-
-const MODE_INSTRUCTIONS: Record<Mode, string> = {
-  tasks: 'Extract every to-do item. Look for checkboxes, bullets, "todo"/"TODO", arrows, and action phrases. Skip items that are checked off or crossed out, and skip plain notes that aren\'t actions. If the whole input is a single action, return one task.',
-  marked: 'The user marks each item they want in Marvin as a heading with the diagonal-line (hatched) heading style. Create exactly one task per marked item and ignore everything else. Text items were read by the tablet\'s handwriting recognition and may contain recognition errors; fix obvious ones. For page images, use only headings drawn with diagonal-line shading, not other heading styles or plain writing.',
-};
-
 export class ClaudeError extends Error {}
-
-function today(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 const imageBlock = (base64: string) => ({
   type: 'image',
   source: { type: 'base64', media_type: 'image/png', data: base64 },
 });
-
-const kb = (base64: string) => Math.round((base64.length * 3) / 4 / 1024);
-
-function describe(input: Content): string {
-  switch (input.kind) {
-    case 'image':
-      return `image ${kb(input.base64)} KB`;
-    case 'pages':
-      return `${input.images.length} page(s) ${input.images.map(i => i.page + 1).join(',')}, ` +
-        `${input.images.reduce((n, i) => n + kb(i.base64), 0)} KB`;
-    case 'text':
-      return `text ${input.text.length} chars`;
-  }
-}
 
 export async function extractTasks(
   apiKey: string,
@@ -90,7 +31,7 @@ export async function extractTasks(
   input: Content,
   mode: Mode,
 ): Promise<ExtractedTask[]> {
-  const instruction = `Today is ${today()}.\n\n${MODE_INSTRUCTIONS[mode]}`;
+  const instruction = instructionFor(mode);
   const content =
     input.kind === 'image'
       ? [imageBlock(input.base64), { type: 'text', text: instruction }]
@@ -171,13 +112,12 @@ export async function extractTasks(
     .filter((b: { type: string }) => b.type === 'text')
     .map((b: { text: string }) => b.text)
     .join('');
-  try {
-    const parsed = JSON.parse(text) as { tasks: ExtractedTask[] };
-    return parsed.tasks.filter(t => t.title.trim().length > 0);
-  } catch {
+  const tasks = parseTasks(text);
+  if (!tasks) {
     log(`claude: unparseable text ${brief(text, 300)}`);
     throw new ClaudeError('Claude returned an unreadable response.');
   }
+  return tasks;
 }
 
 /** Checks the key and model with a free Models API lookup. */

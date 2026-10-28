@@ -10,8 +10,8 @@ import {
   getNoteInfo,
   type NoteInfo,
 } from './capture';
-import { extractTasks, type Content, type ExtractedTask, type Mode } from './claude';
-import { addTask } from './marvin';
+import type { Content, ExtractedTask, Mode } from './prompt';
+import { aiFor, taskAppFor } from './providers';
 import {
   ensurePermission,
   flushPendingSave,
@@ -50,7 +50,14 @@ export type JobState =
   | { status: 'pickPages'; note: NoteInfo; error?: string }
   | { status: 'confirm'; pending: Pending; pageCount: number; estimate: string }
   | { status: 'working'; message: string }
-  | { status: 'done'; added: string[]; failed: number; failReason?: string; emptyMessage?: string }
+  | {
+      status: 'done';
+      added: string[];
+      failed: number;
+      failReason?: string;
+      emptyMessage?: string;
+      appLabel: string;
+    }
   | { status: 'error'; message: string }
   // Settings screen; `pending` is a send to resume once keys are saved.
   // `fromGear`: opened from the plugin list, where no note is open.
@@ -237,7 +244,9 @@ async function confirmIfLarge(source: Source & { kind: 'notePages' }) {
     await run(pending);
     return;
   }
-  const { model } = await loadSettings().catch(() => ({ model: '' }));
+  const model = await loadSettings()
+    .then(c => aiFor(c).model(c))
+    .catch(() => '');
   set({
     status: 'confirm',
     pending,
@@ -287,7 +296,13 @@ export async function startText(text: string) {
 
 // -------------------------------------------------------------------- send
 
-/** Adds tasks to Marvin as they arrive, skipping titles already added this send. */
+/** Runs the selected AI provider. */
+function extract(config: Config, input: Content, mode: Mode): Promise<ExtractedTask[]> {
+  const ai = aiFor(config);
+  return ai.extractTasks(ai.apiKey(config), ai.model(config), input, mode);
+}
+
+/** Adds tasks to the selected task app as they arrive, skipping titles already added this send. */
 class Results {
   added: string[] = [];
   failed = 0;
@@ -306,9 +321,12 @@ class Results {
       return true;
     });
     for (const task of fresh) {
-      set({ status: 'working', message: `Adding to Marvin… ${this.added.length + 1}` });
+      set({
+        status: 'working',
+        message: `Adding to ${taskAppFor(this.config).label}… ${this.added.length + 1}`,
+      });
       try {
-        await addTask(this.config.marvinApiToken, task, this.config.titleSuffix);
+        await taskAppFor(this.config).addTask(this.config, task);
         this.added.push(task.title);
       } catch (e) {
         this.failed++;
@@ -336,10 +354,10 @@ async function sendPages(
     for (const page of batch) {
       images.push({ page, base64: await capturePage(notePath, page) });
     }
-    set({ status: 'working', message: `Claude is reading ${label}…` });
+    set({ status: 'working', message: `${aiFor(config).label} is reading ${label}…` });
     try {
       await results.add(
-        await extractTasks(config.anthropicApiKey, config.model, { kind: 'pages', images }, mode),
+        await extract(config, { kind: 'pages', images }, mode),
       );
     } catch (e) {
       if (!results.added.length && i === 0) {
@@ -382,23 +400,27 @@ async function send({ source, mode }: Pending) {
       emptyMessage = 'No headings with the diagonal-line style were found in this note.';
     }
     if (marked.items.length) {
-      set({ status: 'working', message: `Claude is reading ${marked.items.length} marked item(s)…` });
+      set({
+        status: 'working',
+        message: `${aiFor(config).label} is reading ${marked.items.length} marked item(s)…`,
+      });
       const text = marked.items.map(i => `- (page ${i.page + 1}) ${i.text}`).join('\n');
       await results.add(
-        await extractTasks(config.anthropicApiKey, config.model, { kind: 'text', text }, mode),
+        await extract(config, { kind: 'text', text }, mode),
       );
     }
     if (marked.unrecognizedPages.length) {
       await sendPages(config, results, source.notePath, marked.unrecognizedPages, mode);
     }
   } else {
-    set({ status: 'working', message: 'Asking Claude…' });
-    await results.add(await extractTasks(config.anthropicApiKey, config.model, source, mode));
+    set({ status: 'working', message: `Asking ${aiFor(config).label}…` });
+    await results.add(await extract(config, source, mode));
   }
 
   log(`done: ${results.added.length} added, ${results.failed} failed`);
   set({
     status: 'done',
+    appLabel: taskAppFor(config).label,
     added: results.added,
     failed: results.failed,
     failReason: results.failReason,
