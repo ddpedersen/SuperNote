@@ -11,6 +11,7 @@
  *   }
  */
 import { PluginManager } from 'sn-plugin-lib';
+import { log, mask } from './log';
 
 export const CONFIG_PATH = '/storage/emulated/0/MyStyle/SnMarvin/config.json';
 
@@ -28,10 +29,14 @@ export class ConfigError extends Error {}
 
 /** Asks for a runtime permission; true if granted (once or always). */
 export async function ensurePermission(permission: string): Promise<boolean> {
-  if ((await PluginManager.hasPermission(permission)) === 1) {
+  const name = permission.replace('plugin.permission.', '');
+  const has = await PluginManager.hasPermission(permission);
+  if (has === 1) {
+    log(`permission ${name}: already granted`);
     return true;
   }
   const choice = await PluginManager.requestPermission(permission);
+  log(`permission ${name}: had=${has}, user chose ${choice} (0 deny, 1 once, 2 always, -1 cancel)`);
   return choice === 1 || choice === 2;
 }
 
@@ -45,19 +50,23 @@ export async function loadConfig(): Promise<Config> {
     // fetch() on file:// works in the PluginHost; status is 0, so ignore res.ok.
     const res = await fetch('file://' + CONFIG_PATH);
     raw = await res.text();
-  } catch {
+    log(`config read: status ${res.status}, ${raw.length} chars`);
+  } catch (e) {
+    log(`config read failed: ${e instanceof Error ? e.message : String(e)}`);
     throw new ConfigError(`Missing ${CONFIG_PATH}`);
   }
 
   let json: Partial<Config>;
   try {
     json = JSON.parse(raw);
-  } catch {
+  } catch (e) {
+    log(`config JSON error: ${e instanceof Error ? e.message : String(e)}`);
     throw new ConfigError('config.json is not valid JSON.');
   }
 
   const anthropicApiKey = (json.anthropicApiKey ?? '').trim();
   const marvinApiToken = (json.marvinApiToken ?? '').trim();
+  log(`config keys: anthropic ${mask(anthropicApiKey)}, marvin ${mask(marvinApiToken)}`);
   if (!anthropicApiKey || !marvinApiToken) {
     throw new ConfigError('config.json needs anthropicApiKey and marvinApiToken.');
   }

@@ -3,6 +3,8 @@
  * tasks to create. Uses the REST API directly: the Anthropic TypeScript SDK
  * does not support React Native.
  */
+import { log, brief } from './log';
+import { fetchWithTimeout } from './http';
 
 export type Mode = 'tasks' | 'research';
 
@@ -80,9 +82,16 @@ export async function extractTasks(
           { type: 'text', text: instruction },
         ];
 
+  log(
+    `claude: ${model}, mode=${mode}, ` +
+      (input.kind === 'image'
+        ? `image ${Math.round((input.base64.length * 3) / 4 / 1024)} KB`
+        : `text ${input.text.length} chars`),
+  );
+  const started = Date.now();
   let res: Response;
   try {
-    res = await fetch(API_URL, {
+    res = await fetchWithTimeout(API_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -103,13 +112,22 @@ export async function extractTasks(
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content }],
       }),
-    });
-  } catch {
-    throw new ClaudeError('Could not reach Claude. Check Wi-Fi.');
+    }, 120_000);
+  } catch (e) {
+    log(`claude: network failure: ${e instanceof Error ? e.message : String(e)}`);
+    throw new ClaudeError(
+      `Could not reach Claude (${e instanceof Error ? e.message : 'network error'}). Check Wi-Fi.`,
+    );
   }
 
   const body = await res.json().catch(() => null);
+  log(
+    `claude: HTTP ${res.status} in ${((Date.now() - started) / 1000).toFixed(1)}s, ` +
+      `stop=${body?.stop_reason}, served by ${body?.model}, ` +
+      `tokens in/out ${body?.usage?.input_tokens}/${body?.usage?.output_tokens}`,
+  );
   if (!res.ok) {
+    log(`claude: error body ${brief(body?.error ?? body, 300)}`);
     if (res.status === 401) {
       throw new ClaudeError('Claude rejected the API key (401).');
     }
@@ -122,6 +140,7 @@ export async function extractTasks(
   }
 
   if (body?.stop_reason === 'refusal') {
+    log(`claude: refusal ${brief(body?.stop_details)}`);
     throw new ClaudeError('Claude declined to process this content.');
   }
   if (body?.stop_reason === 'max_tokens') {
@@ -136,6 +155,7 @@ export async function extractTasks(
     const parsed = JSON.parse(text) as { tasks: ExtractedTask[] };
     return parsed.tasks.filter(t => t.title.trim().length > 0);
   } catch {
+    log(`claude: unparseable text ${brief(text, 300)}`);
     throw new ClaudeError('Claude returned an unreadable response.');
   }
 }

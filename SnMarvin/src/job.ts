@@ -7,6 +7,8 @@ import { capturePage, captureLasso } from './capture';
 import { extractTasks, type Input, type Mode } from './claude';
 import { addTask } from './marvin';
 import { loadConfig, ensurePermission } from './config';
+import { clearLog, log, logError } from './log';
+import { PluginManager } from 'sn-plugin-lib';
 
 export type JobState =
   | { status: 'idle' }
@@ -39,9 +41,15 @@ export function reset() {
 const isBusy = () => state.status === 'working';
 
 function fail(e: unknown) {
-  const message = e instanceof Error ? e.message : String(e);
-  console.log('[SnMarvin] error:', message);
-  set({ status: 'error', message });
+  logError('send', e);
+  set({ status: 'error', message: e instanceof Error ? e.message : String(e) });
+}
+
+/** Starts a fresh diagnostic log for this send. */
+async function begin(what: string) {
+  clearLog();
+  const device = await PluginManager.getDeviceType().catch(() => -1);
+  log(`start: ${what} (deviceType ${device})`);
 }
 
 /** Sidebar button: send the whole current page as tasks. */
@@ -51,6 +59,7 @@ export async function startPage() {
   }
   set({ status: 'working', message: 'Capturing page…' });
   try {
+    await begin('page');
     await send({ kind: 'image', base64: await capturePage() }, 'tasks');
   } catch (e) {
     fail(e);
@@ -64,6 +73,7 @@ export async function startLasso() {
   }
   set({ status: 'working', message: 'Capturing selection…' });
   try {
+    await begin('lasso');
     set({ status: 'choose', input: { kind: 'image', base64: await captureLasso() } });
   } catch (e) {
     fail(e);
@@ -71,10 +81,11 @@ export async function startLasso() {
 }
 
 /** DOC text-selection button: let the user pick a mode for the selected text. */
-export function startText(text: string) {
+export async function startText(text: string) {
   if (isBusy()) {
     return;
   }
+  await begin(`doc text (${text.length} chars)`);
   if (!text.trim()) {
     set({ status: 'error', message: 'No text is selected.' });
     return;
@@ -87,6 +98,7 @@ export async function choose(mode: Mode) {
     return;
   }
   const { input } = state;
+  log(`mode: ${mode}`);
   try {
     await send(input, mode);
   } catch (e) {
@@ -103,6 +115,7 @@ async function send(input: Input, mode: Mode) {
 
   set({ status: 'working', message: 'Asking Claude…' });
   const tasks = await extractTasks(config.anthropicApiKey, config.model, input, mode);
+  log(`claude: ${tasks.length} task(s)`);
   if (tasks.length === 0) {
     set({ status: 'done', added: [], failed: 0 });
     return;
@@ -117,8 +130,8 @@ async function send(input: Input, mode: Mode) {
       added.push(task.title);
     } catch (e) {
       failReason = e instanceof Error ? e.message : String(e);
-      console.log('[SnMarvin] addTask failed:', failReason);
     }
   }
+  log(`done: ${added.length} added, ${tasks.length - added.length} failed`);
   set({ status: 'done', added, failed: tasks.length - added.length, failReason });
 }

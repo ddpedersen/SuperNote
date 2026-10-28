@@ -43,6 +43,12 @@ Keep `react-native` at **0.79.2** and `react` at **19.0.0** (fixed by the device
 
 ## Debugging
 
+**No computer needed:** tap **Show details** on the plugin screen. It lists every step of the last send:
+button, permissions, config (keys masked), capture results, the Claude and Marvin HTTP status codes, and any error.
+A photo of that screen is usually enough to diagnose a problem. Keys are never shown in full.
+
+With ADB (optional):
+
 ```bash
 adb push build/outputs/SnMarvin.snplg /storage/emulated/0/MyStyle/
 adb logcat -c && adb logcat -s ReactNativeJS:V PluginHost:V   # plugin logs are tagged [SnMarvin]
