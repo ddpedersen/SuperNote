@@ -36,20 +36,29 @@ type Props = {
 
 const EMPTY: Config = normalize({});
 
+/** Field label, with an optional small link on the right. */
+function Label({text, right}: {text: string; right?: React.ReactNode}) {
+  return (
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{text}</Text>
+      {right}
+    </View>
+  );
+}
+
 /** Dropdown: shows the current choice; tap to list the options. */
 function Select<T extends string>(props: {
   label: string;
   value: T;
   options: {value: T; label: string}[];
   onChange: (v: T) => void;
-  hint?: string;
+  style?: object;
 }) {
   const [open, setOpen] = useState(false);
   const current = props.options.find(o => o.value === props.value);
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{props.label}</Text>
-      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+    <View style={[styles.field, props.style]}>
+      <Label text={props.label} />
       <Pressable style={styles.select} onPress={() => setOpen(!open)}>
         <Text style={styles.selectText}>{current?.label ?? props.value}</Text>
         <Text style={styles.selectText}>{open ? '▴' : '▾'}</Text>
@@ -79,11 +88,12 @@ function Field(props: {
   onChange: (v: string) => void;
   secret?: boolean;
   revealed?: boolean;
+  right?: React.ReactNode;
+  style?: object;
 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{props.label}</Text>
-      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+    <View style={[styles.field, props.style]}>
+      <Label text={props.label} right={props.right} />
       <TextInput
         style={styles.input}
         value={props.value}
@@ -93,6 +103,7 @@ function Field(props: {
         autoCorrect={false}
         spellCheck={false}
       />
+      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
     </View>
   );
 }
@@ -103,6 +114,14 @@ function Button({label, onPress, disabled}: {label: string; onPress: () => void;
       style={[styles.button, disabled && styles.buttonDisabled]}
       onPress={disabled ? undefined : onPress}>
       <Text style={styles.buttonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Link({text, onPress}: {text: string; onPress?: () => void}) {
+  return (
+    <Pressable onPress={onPress} hitSlop={12}>
+      <Text style={styles.link}>{text}</Text>
     </Pressable>
   );
 }
@@ -124,13 +143,11 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
       .then(loaded => {
         setForm(loaded);
         if (hasPendingSave()) {
-          setNotice(
-            'Your keys are not saved yet. Open any note and use the plugin once to save them before restarting your device.',
-          );
-        } else if (isStoreUnreadable()) {
-          setNotice(
-            "Saved keys can't be shown here because no note is open. Entering keys here replaces them.",
-          );
+          setNotice('Keys not saved yet: use the plugin once in a note before restarting.');
+        } else if (isStoreUnreadable() && missingKeys(loaded).length) {
+          setNotice('Open Settings from a note to see your saved keys.');
+        } else if (isStoreUnreadable() && keyFilePath) {
+          setNotice(`Using keys from ${keyFilePath}.`);
         }
       })
       .catch(e => {
@@ -174,10 +191,10 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
     run(async () => {
       const file = await readConfigFile();
       if (!file) {
-        return ['✗ No key file found in MyStyle. Tap "Key file format" below for how to make one.'];
+        return ['✗ No key file found in MyStyle. See "Key file format".'];
       }
       setForm(file);
-      return [`Loaded ${keyFilePath ?? 'key file'}. Tap Save to keep the keys, then you can delete the file.`];
+      return [`Loaded ${keyFilePath ?? 'key file'}. Tap Save to keep the keys.`];
     });
 
   const save = () =>
@@ -186,111 +203,119 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         // Only claim "keys valid" (and hold them in memory) if both checks pass.
         const results = await checkBoth();
         if (results.some(r => !r.startsWith('✓'))) {
-          return [...results, 'Not saved. Fix the key above and tap Save again.'];
+          return [...results, 'Not saved. Fix the key and tap Save again.'];
         }
       }
       onSaved(await saveSettings(form, fromGear));
     });
 
+  const showKeys = (
+    <Link text={revealed ? 'Hide' : 'Show'} onPress={() => setRevealed(!revealed)} />
+  );
+
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Settings</Text>
-      {resuming && (
-        <Text style={styles.hint}>Add your keys to finish sending. Your selection is kept.</Text>
-      )}
+      {resuming && <Text style={styles.notice}>Add your keys to finish sending. Your selection is kept.</Text>}
       {notice && <Text style={styles.notice}>{notice}</Text>}
 
-      <Select<AiProviderId>
-        label="AI service"
-        value={form.aiProvider}
-        options={(Object.keys(AI_PROVIDERS) as AiProviderId[]).map(id => ({
-          value: id,
-          label: AI_PROVIDERS[id].label,
-        }))}
-        onChange={v => setForm(f => ({...f, aiProvider: v}))}
-      />
-      {form.aiProvider === 'anthropic' ? (
-        <>
+      <View style={styles.pair}>
+        <Select<AiProviderId>
+          label="AI service"
+          value={form.aiProvider}
+          options={(Object.keys(AI_PROVIDERS) as AiProviderId[]).map(id => ({
+            value: id,
+            label: AI_PROVIDERS[id].label,
+          }))}
+          onChange={v => setForm(f => ({...f, aiProvider: v}))}
+          style={styles.half}
+        />
+        {form.aiProvider === 'anthropic' ? (
           <Field
-            label={AI_PROVIDERS.anthropic.keyLabel}
-            hint={AI_PROVIDERS.anthropic.keyHint}
-            value={form.anthropicApiKey}
-            onChange={update('anthropicApiKey')}
-            secret
-            revealed={revealed}
+            label="Model"
+            value={form.anthropicModel}
+            onChange={update('anthropicModel')}
+            style={styles.half}
           />
-          <Field label="Claude model" value={form.anthropicModel} onChange={update('anthropicModel')} />
-        </>
-      ) : (
-        <>
+        ) : (
           <Field
-            label={AI_PROVIDERS.openai.keyLabel}
-            hint={AI_PROVIDERS.openai.keyHint}
-            value={form.openaiApiKey}
-            onChange={update('openaiApiKey')}
-            secret
-            revealed={revealed}
-          />
-          <Field
-            label="OpenAI model"
-            hint="Any model that reads images and supports structured outputs. Tap Test to check it."
+            label="Model"
             value={form.openaiModel}
             onChange={update('openaiModel')}
+            style={styles.half}
           />
-        </>
+        )}
+      </View>
+      {form.aiProvider === 'anthropic' ? (
+        <Field
+          label={AI_PROVIDERS.anthropic.keyLabel}
+          hint={AI_PROVIDERS.anthropic.keyHint}
+          value={form.anthropicApiKey}
+          onChange={update('anthropicApiKey')}
+          secret
+          revealed={revealed}
+          right={showKeys}
+        />
+      ) : (
+        <Field
+          label={AI_PROVIDERS.openai.keyLabel}
+          hint={AI_PROVIDERS.openai.keyHint}
+          value={form.openaiApiKey}
+          onChange={update('openaiApiKey')}
+          secret
+          revealed={revealed}
+          right={showKeys}
+        />
       )}
 
-      <Select<TaskAppId>
-        label="Task app"
-        value={form.taskApp}
-        options={(Object.keys(TASK_APPS) as TaskAppId[]).map(id => ({
-          value: id,
-          label: TASK_APPS[id].label,
-        }))}
-        onChange={v => setForm(f => ({...f, taskApp: v}))}
-      />
-      {form.taskApp === 'marvin' ? (
-        <>
+      <View style={styles.pair}>
+        <Select<TaskAppId>
+          label="Task app"
+          value={form.taskApp}
+          options={(Object.keys(TASK_APPS) as TaskAppId[]).map(id => ({
+            value: id,
+            label: TASK_APPS[id].label,
+          }))}
+          onChange={v => setForm(f => ({...f, taskApp: v}))}
+          style={styles.half}
+        />
+        {form.taskApp === 'marvin' ? (
           <Field
-            label="Marvin API token"
-            hint="Marvin → Settings → API → API Token"
-            value={form.marvinApiToken}
-            onChange={update('marvinApiToken')}
-            secret
-            revealed={revealed}
-          />
-          <Field
-            label="Add to each task title"
-            hint="Marvin shortcuts, e.g. +today or #Project. Leave blank for none."
+            label="Add to titles"
             value={form.titleSuffix}
             onChange={update('titleSuffix')}
+            style={styles.half}
           />
-        </>
-      ) : (
-        <>
+        ) : (
           <Field
-            label="Todoist API token"
-            hint="Todoist → Settings → Integrations → Developer → API token. Tasks go to your Inbox."
-            value={form.todoistApiToken}
-            onChange={update('todoistApiToken')}
-            secret
-            revealed={revealed}
-          />
-          <Field
-            label="Due date when none is written"
-            hint='Todoist wording, e.g. "today" or "tomorrow". Leave blank for no due date.'
+            label="Default due"
             value={form.todoistDefaultDue}
             onChange={update('todoistDefaultDue')}
+            style={styles.half}
           />
-        </>
+        )}
+      </View>
+      {form.taskApp === 'marvin' ? (
+        <Field
+          label="Marvin API token"
+          hint="Marvin → Features → API. Titles: Marvin shortcuts like +today, #Project, or blank."
+          value={form.marvinApiToken}
+          onChange={update('marvinApiToken')}
+          secret
+          revealed={revealed}
+          right={showKeys}
+        />
+      ) : (
+        <Field
+          label="Todoist API token"
+          hint='Todoist → Settings → Integrations → Developer. Due: e.g. "today", or blank for none.'
+          value={form.todoistApiToken}
+          onChange={update('todoistApiToken')}
+          secret
+          revealed={revealed}
+          right={showKeys}
+        />
       )}
-      <Pressable onPress={() => setRevealed(!revealed)} hitSlop={12}>
-        <Text style={styles.link}>{revealed ? 'Hide keys' : 'Show keys'}</Text>
-      </Pressable>
-      <Text style={styles.hint}>
-        Keys for each service are kept when you switch, so you can switch back without
-        re-entering them.
-      </Text>
 
       {messages.map((m, i) => (
         <Text key={i} style={styles.message}>
@@ -298,95 +323,87 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
         </Text>
       ))}
 
-      <View style={styles.row}>
+      <View style={styles.buttons}>
         <Button label="Test" onPress={test} disabled={busy} />
         <Button label={resuming ? 'Save & send' : 'Save'} onPress={save} disabled={busy} />
         <Button label="Cancel" onPress={onCancel} disabled={busy} />
       </View>
-      <Pressable onPress={busy ? undefined : importFile} hitSlop={12}>
-        <Text style={styles.link}>Import key file from MyStyle</Text>
-      </Pressable>
-      <Pressable onPress={() => setShowFormat(!showFormat)} hitSlop={12}>
-        <Text style={styles.link}>{showFormat ? 'Hide key file format' : 'Key file format'}</Text>
-      </Pressable>
+      <View style={styles.links}>
+        <Link text="Import key file" onPress={busy ? undefined : importFile} />
+        <Link
+          text={showFormat ? 'Hide key file format' : 'Key file format'}
+          onPress={() => setShowFormat(!showFormat)}
+        />
+      </View>
       {showFormat && (
-        <View style={styles.notice}>
+        <View style={styles.box}>
           <Text style={styles.hint}>
-            Instead of typing keys here, make a text file with this content, replace the
-            PASTE_ values with your keys, and save it with a name ending in .json (for example
-            ai-task-keys.json). Put it anywhere in MyStyle, e.g. with the Supernote Partner app.
-            The plugin finds it automatically. To use OpenAI, set "aiProvider" to "openai" and
-            fill in "openaiApiKey". To use Todoist, set "taskApp" to "todoist" and fill in
-            "todoistApiToken".
+            Or skip typing: save this as any .json file anywhere in MyStyle (e.g. with the
+            Supernote Partner app), with your keys in place of PASTE_…. For OpenAI or Todoist, set
+            "aiProvider"/"taskApp" and fill in that key. Keep straight quotes (").
           </Text>
           <Text style={styles.code}>{KEY_FILE_TEMPLATE}</Text>
-          <Text style={styles.hint}>
-            Keep the straight quotes ("). Phone keyboards may turn them into curly quotes; turn
-            off Smart Punctuation or use a plain-text editor.
-          </Text>
         </View>
       )}
       <Text style={styles.hint}>
-        Keys are stored on this device in MyStyle/SnMarvin/settings.note. Each key is only sent
-        to its own service.
+        Keys stay on this device; each is only sent to its own service. Switching services keeps
+        the other keys.
       </Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {fontSize: 36, fontWeight: '700', color: '#000000', marginBottom: 16, marginRight: 40},
-  field: {marginBottom: 20},
-  label: {fontSize: 28, fontWeight: '600', color: '#000000'},
-  hint: {fontSize: 22, color: '#000000', marginTop: 4, marginBottom: 8},
+  title: {fontSize: 32, fontWeight: '700', color: '#000000', marginBottom: 8, marginRight: 40},
+  notice: {fontSize: 20, color: '#000000', fontStyle: 'italic', marginBottom: 8},
+  pair: {flexDirection: 'row', gap: 16},
+  half: {flex: 1},
+  field: {marginBottom: 12},
+  labelRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline'},
+  label: {fontSize: 23, fontWeight: '600', color: '#000000', marginBottom: 4},
+  hint: {fontSize: 19, color: '#000000', marginTop: 4},
   input: {
     borderWidth: 2,
     borderColor: '#000000',
     borderRadius: 6,
-    fontSize: 26,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    fontSize: 23,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     color: '#000000',
-  },
-  link: {fontSize: 24, color: '#000000', textDecorationLine: 'underline', marginVertical: 12},
-  message: {fontSize: 26, color: '#000000', marginBottom: 8},
-  code: {fontSize: 22, lineHeight: 30, fontFamily: 'monospace', color: '#000000', marginVertical: 8},
-  notice: {
-    fontSize: 24,
-    color: '#000000',
-    borderWidth: 2,
-    borderColor: '#000000',
-    padding: 12,
-    marginBottom: 16,
   },
   select: {
     borderWidth: 2,
     borderColor: '#000000',
     borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  selectText: {fontSize: 26, color: '#000000'},
+  selectText: {fontSize: 23, color: '#000000'},
   selectTextOn: {color: '#ffffff'},
   selectOption: {
     borderWidth: 2,
     borderTopWidth: 0,
     borderColor: '#000000',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   selectOptionOn: {backgroundColor: '#000000'},
-  row: {flexDirection: 'row', justifyContent: 'center', marginTop: 16, flexWrap: 'wrap'},
+  link: {fontSize: 21, color: '#000000', textDecorationLine: 'underline'},
+  links: {flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8},
+  message: {fontSize: 22, color: '#000000', marginBottom: 4},
+  code: {fontSize: 19, lineHeight: 26, fontFamily: 'monospace', color: '#000000', marginTop: 6},
+  box: {borderWidth: 2, borderColor: '#000000', padding: 10, marginBottom: 8},
+  buttons: {flexDirection: 'row', justifyContent: 'center', marginTop: 4},
   button: {
     borderWidth: 3,
     borderColor: '#000000',
     borderRadius: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 36,
-    margin: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    marginHorizontal: 8,
   },
   buttonDisabled: {borderColor: '#9d9d9d'},
-  buttonText: {fontSize: 30, fontWeight: '600', color: '#000000'},
+  buttonText: {fontSize: 26, fontWeight: '600', color: '#000000'},
 });
