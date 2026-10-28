@@ -7,7 +7,7 @@ import App from './App';
 import {name as appName} from './app.json';
 
 import {PluginManager, PluginDocAPI} from 'sn-plugin-lib';
-import {openSettings, startPage, startLasso, startText} from './src/job';
+import {openSettings, startNote, startLasso, startText} from './src/job';
 import {log, brief} from './src/log';
 
 const BUTTON_PAGE = 100;
@@ -24,7 +24,7 @@ const icon = Image.resolveAssetSource(require('./assets/icon.png')).uri;
 
 PluginManager.registerButton(1, ['NOTE'], {
   id: BUTTON_PAGE,
-  name: 'Page → Marvin',
+  name: 'Send to Marvin',
   icon,
   showType: 1,
 });
@@ -60,7 +60,7 @@ PluginManager.registerButtonListener({
     log(`button ${event.id} (pressEvent ${event.pressEvent})`);
     switch (event.id) {
       case BUTTON_PAGE:
-        startPage();
+        startNote();
         break;
       case BUTTON_LASSO:
         startLasso();

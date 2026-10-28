@@ -1,20 +1,14 @@
 /**
  * Plugin settings: entered on the in-plugin Settings screen and saved with
- * store.ts. A MyStyle/SnMarvin/config.json file (same keys) can be imported
- * as an alternative to typing keys on the device:
- *
- *   {
- *     "anthropicApiKey": "sk-ant-...",
- *     "marvinApiToken": "...",
- *     "model": "claude-opus-5-5",   // optional
- *     "titleSuffix": "+today"       // optional, Marvin autocomplete syntax
- *   }
+ * store.ts. As an alternative to typing keys on the device, a key file (any
+ * .json file in MyStyle or a subfolder, see KEY_FILE_TEMPLATE) is used when
+ * nothing is saved, and can be imported into Settings.
  */
-import { PluginManager } from 'sn-plugin-lib';
+import { FileUtils, PluginManager } from 'sn-plugin-lib';
 import { log, mask } from './log';
-import { readStored, writeStored, STORE_DIR } from './store';
+import { readStored, writeStored } from './store';
 
-export const CONFIG_PATH = `${STORE_DIR}/config.json`;
+export const MYSTYLE_DIR = '/storage/emulated/0/MyStyle';
 
 export type Config = {
   anthropicApiKey: string;
@@ -25,6 +19,14 @@ export type Config = {
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 export const DEFAULT_TITLE_SUFFIX = '+today';
+
+/** Shown on the Settings screen so users can create the key file on a phone or computer. */
+export const KEY_FILE_TEMPLATE = `{
+  "anthropicApiKey": "PASTE_ANTHROPIC_KEY",
+  "marvinApiToken": "PASTE_MARVIN_TOKEN",
+  "model": "${DEFAULT_MODEL}",
+  "titleSuffix": "${DEFAULT_TITLE_SUFFIX}"
+}`;
 
 export class ConfigError extends Error {}
 /** Thrown when keys are missing, so the UI can open the Settings screen. */
@@ -63,27 +65,71 @@ function normalize(json: Partial<Config>): Config {
 
 const isComplete = (c: Config) => !!c.anthropicApiKey && !!c.marvinApiToken;
 
-/** Reads MyStyle/SnMarvin/config.json, or null if it doesn't exist. */
+/** .json files in MyStyle and up to two folder levels down, likeliest names first. */
+async function findJsonFiles(): Promise<string[]> {
+  const found: string[] = [];
+  const walk = async (dir: string, depth: number) => {
+    let entries: string[] = [];
+    try {
+      entries = (await FileUtils.listFiles(dir)) ?? [];
+    } catch (e) {
+      log(`listFiles ${dir} failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    for (const entry of entries) {
+      const path = entry.startsWith('/') ? entry : `${dir}/${entry}`;
+      const name = path.slice(path.lastIndexOf('/') + 1);
+      if (/\.json$/i.test(name)) {
+        found.push(path);
+      } else if (depth > 0 && !name.includes('.')) {
+        await walk(path, depth - 1);
+      }
+    }
+  };
+  await walk(MYSTYLE_DIR, 2);
+  const rank = (p: string) => (/marvin/i.test(p) ? 0 : /config|key/i.test(p) ? 1 : 2);
+  return found.sort((a, b) => rank(a) - rank(b)).slice(0, 25);
+}
+
+const shortPath = (p: string) => p.replace(/^\/storage\/emulated\/0\//, '');
+
+/** Where the key file was last found, for the Settings screen. */
+export let keyFilePath: string | null = null;
+
+/**
+ * Finds the key file: the first .json in MyStyle (any name, any subfolder up
+ * to two levels) that contains anthropicApiKey or marvinApiToken. Null if none.
+ */
 export async function readConfigFile(): Promise<Config | null> {
-  let raw: string;
-  try {
-    // fetch() on file:// works in the PluginHost; status is 0, so ignore res.ok.
-    const res = await fetch('file://' + CONFIG_PATH);
-    raw = await res.text();
-    log(`config.json: status ${res.status}, ${raw.length} chars`);
-  } catch (e) {
-    log(`config.json not readable: ${e instanceof Error ? e.message : String(e)}`);
-    return null;
+  const files = await findJsonFiles();
+  log(`key file candidates: ${files.length ? files.map(shortPath).join(', ') : 'none'}`);
+  for (const path of files) {
+    let raw: string;
+    try {
+      // fetch() on file:// works in the PluginHost; status is 0, so ignore res.ok.
+      raw = await (await fetch('file://' + path)).text();
+    } catch (e) {
+      log(`${shortPath(path)} not readable: ${e instanceof Error ? e.message : String(e)}`);
+      continue;
+    }
+    if (!/anthropicApiKey|marvinApiToken/.test(raw)) {
+      continue;
+    }
+    let json: Partial<Config>;
+    try {
+      json = JSON.parse(raw);
+    } catch (e) {
+      log(`${shortPath(path)} JSON error: ${e instanceof Error ? e.message : String(e)}`);
+      throw new ConfigError(
+        /[\u201c\u201d\u2018\u2019]/.test(raw)
+          ? `${shortPath(path)} has curly quotes (“ ”), usually from a phone keyboard. Replace them with straight quotes (").`
+          : `${shortPath(path)} has a formatting error. Compare it with the format shown in Settings.`,
+      );
+    }
+    keyFilePath = shortPath(path);
+    log(`key file: ${keyFilePath}`);
+    return normalize(json);
   }
-  if (!raw.trim()) {
-    return null;
-  }
-  try {
-    return normalize(JSON.parse(raw));
-  } catch (e) {
-    log(`config.json JSON error: ${e instanceof Error ? e.message : String(e)}`);
-    throw new ConfigError('config.json is not valid JSON.');
-  }
+  return null;
 }
 
 /** Saved settings, falling back to config.json; never throws for "not set up yet". */

@@ -63,21 +63,30 @@ async function readAndDelete(path: string): Promise<string> {
   }
 }
 
-/** Renders the current NOTE page to PNG. */
-export async function capturePage(): Promise<string> {
-  // Flush unsaved strokes so the rendered page matches the screen.
-  log(`saveCurrentNote -> ${brief(await PluginNoteAPI.saveCurrentNote())}`);
+export type NoteInfo = { notePath: string; currentPage: number; totalPages: number };
 
+/** Saves pending strokes and returns the open note's path, current page, and page count. */
+export async function getNoteInfo(): Promise<NoteInfo> {
+  // Flush unsaved strokes so rendered pages match the screen.
+  log(`saveCurrentNote -> ${brief(await PluginNoteAPI.saveCurrentNote())}`);
   const notePath = unwrap<string>(
     await PluginCommAPI.getCurrentFilePath(),
     'getCurrentFilePath',
   );
-  const page = unwrap<number>(
+  const currentPage = unwrap<number>(
     await PluginCommAPI.getCurrentPageNum(),
     'getCurrentPageNum',
   );
-  const pngPath = `${await workDir()}/page-${Date.now()}.png`;
+  const totalPages = unwrap<number>(
+    await PluginFileAPI.getNoteTotalPageNum(notePath),
+    'getNoteTotalPageNum',
+  );
+  return { notePath, currentPage, totalPages };
+}
 
+/** Renders one page (0-based) of a note to a base64 PNG. */
+export async function capturePage(notePath: string, page: number): Promise<string> {
+  const pngPath = `${await workDir()}/page-${page}-${Date.now()}.png`;
   unwrap<boolean>(
     await PluginFileAPI.generateNotePng({
       notePath,
@@ -86,9 +95,83 @@ export async function capturePage(): Promise<string> {
       pngPath,
       type: 1, // white background
     }),
-    'generateNotePng',
+    `generateNotePng(page ${page + 1})`,
   );
   return readAndDelete(pngPath);
+}
+
+/**
+ * Heading style used to mark items for Marvin. sn-plugin-lib numbers title
+ * styles 1 black, 2 light gray, 3 dark gray, 4 "shadow"; on the device the
+ * 4th style is drawn with diagonal lines.
+ */
+export const MARKED_TITLE_STYLE = 4;
+
+export type MarkedHeadings = {
+  /** Handwriting-recognized text of each marked heading. */
+  items: { page: number; text: string }[];
+  /** Pages with a marked heading whose text couldn't be recognized on the device. */
+  unrecognizedPages: number[];
+};
+
+type Title = { page: number; style: number; controlTrailNums?: number[] };
+type PageElement = { uuid?: string; type: number; numInPage: number };
+
+/** Finds headings in the marked style and recognizes their handwriting on the device. */
+export async function getMarkedHeadings(
+  notePath: string,
+  totalPages: number,
+): Promise<MarkedHeadings> {
+  const pages = Array.from({ length: totalPages }, (_, i) => i);
+  const titles = unwrap<Title[]>(await PluginFileAPI.getTitles(notePath, pages), 'getTitles');
+  const styles = titles.reduce<Record<number, number>>((acc, t) => {
+    acc[t.style] = (acc[t.style] ?? 0) + 1;
+    return acc;
+  }, {});
+  log(`headings by style: ${brief(styles)} (marked style = ${MARKED_TITLE_STYLE})`);
+
+  const marked = titles.filter(t => t.style === MARKED_TITLE_STYLE);
+  const result: MarkedHeadings = { items: [], unrecognizedPages: [] };
+  const byPage = new Map<number, Title[]>();
+  marked.forEach(t => byPage.set(t.page, [...(byPage.get(t.page) ?? []), t]));
+
+  for (const [page, pageTitles] of byPage) {
+    let elements: PageElement[] = [];
+    try {
+      const size = unwrap<{ width: number; height: number }>(
+        await PluginFileAPI.getPageSize(notePath, page),
+        `getPageSize(page ${page + 1})`,
+      );
+      elements = unwrap<PageElement[]>(
+        await PluginFileAPI.getElements(page, notePath),
+        `getElements(page ${page + 1})`,
+      );
+      for (const title of pageTitles) {
+        const nums = new Set(title.controlTrailNums ?? []);
+        const strokes = elements.filter(e => e.type === 0 && nums.has(e.numInPage));
+        const text = strokes.length
+          ? (unwrap<string>(
+              await PluginCommAPI.recognizeElements(strokes, size),
+              `recognizeElements(page ${page + 1})`,
+            ) ?? '').trim()
+          : '';
+        if (text) {
+          result.items.push({ page, text });
+        } else if (!result.unrecognizedPages.includes(page)) {
+          result.unrecognizedPages.push(page);
+        }
+      }
+    } catch (e) {
+      log(`heading recognition failed on page ${page + 1}: ${e instanceof Error ? e.message : String(e)}`);
+      if (!result.unrecognizedPages.includes(page)) {
+        result.unrecognizedPages.push(page);
+      }
+    } finally {
+      elements.forEach(e => e.uuid && PluginCommAPI.recycleElement(e.uuid));
+    }
+  }
+  log(`marked headings: ${result.items.length} recognized, pages needing images: ${brief(result.unrecognizedPages.map(p => p + 1))}`);
+  return result;
 }
 
 /** Renders the current lasso selection to PNG. Must run while the lasso is active. */

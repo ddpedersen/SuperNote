@@ -1,21 +1,28 @@
 /**
  * Send to Marvin — plugin view.
- * Shows the Tasks/Research choice for a selection, progress, the result,
- * and the Settings screen.
+ * Shows the note menu (page / whole note / pages / marked headings), the
+ * Tasks/Research choice for a selection, progress, the result, and Settings.
  * Plain black-on-white with no animation, for e-ink.
  *
  * @format
  */
 
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import {
   choose,
+  confirmSend,
   getState,
+  openPagePicker,
   openSettings,
   reset,
+  sendCurrentPage,
+  sendMarked,
+  sendPageList,
+  sendWholeNote,
   settingsSaved,
+  startNote,
   subscribe,
   type JobState,
 } from './src/job';
@@ -48,10 +55,86 @@ function Details() {
   );
 }
 
+/** Full-width menu option with a one-line explanation. */
+function Option({label, hint, onPress}: {label: string; hint: string; onPress: () => void}) {
+  return (
+    <Pressable style={styles.option} onPress={onPress}>
+      <Text style={styles.buttonText}>{label}</Text>
+      <Text style={styles.optionHint}>{hint}</Text>
+    </Pressable>
+  );
+}
+
+function PagePicker({totalPages, error}: {totalPages: number; error?: string}) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <Text style={styles.title}>Which pages?</Text>
+      <Text style={styles.message}>This note has {totalPages} pages. Example: 1-3, 5, 8-10</Text>
+      <TextInput
+        style={styles.input}
+        value={text}
+        onChangeText={setText}
+        autoFocus
+        autoCorrect={false}
+        onSubmitEditing={() => sendPageList(text)}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.row}>
+        <Button label="Send" onPress={() => sendPageList(text)} />
+        <Button label="Back" onPress={startNote} />
+      </View>
+    </>
+  );
+}
+
 function Body({state}: {state: JobState}) {
   switch (state.status) {
     case 'idle':
       return <Text style={styles.message}>Ready.</Text>;
+
+    case 'menu': {
+      const {currentPage, totalPages} = state.note;
+      return (
+        <ScrollView>
+          <Text style={styles.title}>Send to Marvin</Text>
+          <Option
+            label="This page"
+            hint={`Page ${currentPage + 1} of ${totalPages}: every to-do on it`}
+            onPress={sendCurrentPage}
+          />
+          <Option
+            label="Whole note"
+            hint={`All ${totalPages} page${totalPages === 1 ? '' : 's'}: every to-do in the note`}
+            onPress={sendWholeNote}
+          />
+          <Option label="Choose pages…" hint="Pick pages, e.g. 1-3, 5" onPress={openPagePicker} />
+          <Option
+            label="Marked headings"
+            hint="Only items set as a heading with the diagonal-line style, from the whole note"
+            onPress={sendMarked}
+          />
+        </ScrollView>
+      );
+    }
+
+    case 'pickPages':
+      return <PagePicker totalPages={state.note.totalPages} error={state.error} />;
+
+    case 'confirm':
+      return (
+        <>
+          <Text style={styles.title}>Send {state.pageCount} pages?</Text>
+          <Text style={styles.message}>{state.estimate}</Text>
+          <Text style={styles.hint}>
+            Pages are sent 5 at a time. Tasks found so far are kept if something fails partway.
+          </Text>
+          <View style={styles.row}>
+            <Button label="Send" onPress={confirmSend} />
+            <Button label="Back" onPress={startNote} />
+          </View>
+        </>
+      );
 
     case 'choose':
       return (
@@ -73,7 +156,7 @@ function Body({state}: {state: JobState}) {
         <>
           <Text style={styles.title}>
             {n === 0 && state.failed === 0
-              ? 'No tasks found'
+              ? state.emptyMessage ?? 'No tasks found'
               : `✓ ${n} task${n === 1 ? '' : 's'} added to Marvin`}
           </Text>
           <ScrollView style={styles.list}>
@@ -140,7 +223,8 @@ function App(): React.JSX.Element {
     state.status === 'done' ||
     state.status === 'error' ||
     state.status === 'saved' ||
-    state.status === 'idle';
+    state.status === 'idle' ||
+    state.status === 'menu';
 
   if (state.status === 'setup') {
     return (
@@ -213,6 +297,26 @@ const styles = StyleSheet.create({
   item: {fontSize: 28, color: '#000000', marginBottom: 12},
   error: {fontSize: 28, color: '#000000', marginBottom: 16},
   hint: {fontSize: 24, color: '#000000', marginTop: 16},
+  option: {
+    borderWidth: 3,
+    borderColor: '#000000',
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  optionHint: {fontSize: 22, color: '#000000', marginTop: 4},
+  input: {
+    borderWidth: 2,
+    borderColor: '#000000',
+    borderRadius: 6,
+    fontSize: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#000000',
+  },
   details: {marginTop: 40, marginBottom: 8},
   detailsLine: {
     fontSize: 22,
