@@ -1,0 +1,15 @@
+{
+  "name": "Send to Marvin",
+  "desc": "Sends the current page, a lasso selection, or selected document text to Claude (Anthropic API) to extract to-dos, then adds them to your Amazing Marvin inbox. Note images and text are sent to api.anthropic.com; tasks are sent to serv.amazingmarvin.com. Requires API keys in MyStyle/SnMarvin/config.json.",
+  "iconPath": "assets/icon.png",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "pluginID": "3k2g448bk976l61n",
+  "pluginKey": "SnMarvin",
+  "jsMainPath": "index",
+  "author": "ddpedersen",
+  "uses-permissions": [
+    "plugin.permission.INTERNET",
+    "plugin.permission.FILE:READ"
+  ]
+}
