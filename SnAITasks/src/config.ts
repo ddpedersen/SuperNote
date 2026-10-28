@@ -11,7 +11,7 @@ import { readStored, writeStored } from './store';
 export const MYSTYLE_DIR = '/storage/emulated/0/MyStyle';
 
 export type AiProviderId = 'anthropic' | 'openai';
-export type TaskAppId = 'marvin';
+export type TaskAppId = 'marvin' | 'todoist';
 
 /**
  * Keys for every provider/app are kept, so switching back and forth in
@@ -25,12 +25,17 @@ export type Config = {
   openaiModel: string;
   taskApp: TaskAppId;
   marvinApiToken: string;
+  /** Marvin autocomplete text added to titles, e.g. "+today". */
   titleSuffix: string;
+  todoistApiToken: string;
+  /** Todoist due date for tasks with none written, e.g. "today"; "" for none. */
+  todoistDefaultDue: string;
 };
 
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
 export const DEFAULT_OPENAI_MODEL = 'gpt-6-astra';
 export const DEFAULT_TITLE_SUFFIX = '+today';
+export const DEFAULT_TODOIST_DUE = 'today';
 
 /** Shown on the Settings screen so users can create the key file on a phone or computer. */
 export const KEY_FILE_TEMPLATE = `{
@@ -39,9 +44,10 @@ export const KEY_FILE_TEMPLATE = `{
   "openaiApiKey": "",
   "taskApp": "marvin",
   "marvinApiToken": "PASTE_MARVIN_TOKEN",
-  "titleSuffix": "${DEFAULT_TITLE_SUFFIX}"
+  "titleSuffix": "${DEFAULT_TITLE_SUFFIX}",
+  "todoistApiToken": ""
 }`;
-const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken/;
+const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken|todoistApiToken/;
 
 export class ConfigError extends Error {}
 /** Thrown when keys are missing, so the UI can open the Settings screen. */
@@ -86,9 +92,12 @@ export function normalize(json: Partial<Config> & LegacyConfig): Config {
     openaiApiKey: str(json.openaiApiKey),
     openaiModel:
       str(json.openaiModel) || (aiProvider === 'openai' && legacyModel) || DEFAULT_OPENAI_MODEL,
-    taskApp: 'marvin',
+    taskApp: json.taskApp === 'todoist' ? 'todoist' : 'marvin',
     marvinApiToken: str(json.marvinApiToken),
     titleSuffix: json.titleSuffix === undefined ? DEFAULT_TITLE_SUFFIX : str(json.titleSuffix),
+    todoistApiToken: str(json.todoistApiToken),
+    todoistDefaultDue:
+      json.todoistDefaultDue === undefined ? DEFAULT_TODOIST_DUE : str(json.todoistDefaultDue),
   };
 }
 
@@ -104,6 +113,9 @@ export function missingKeys(c: Config): string[] {
   if (c.taskApp === 'marvin' && !c.marvinApiToken) {
     missing.push('Marvin API token');
   }
+  if (c.taskApp === 'todoist' && !c.todoistApiToken) {
+    missing.push('Todoist API token');
+  }
   return missing;
 }
 
@@ -115,7 +127,11 @@ function describeConfig(c: Config): string {
     c.aiProvider === 'openai'
       ? `openai ${c.openaiModel} key ${mask(c.openaiApiKey)}`
       : `anthropic ${c.anthropicModel} key ${mask(c.anthropicApiKey)}`;
-  return `${ai}; ${c.taskApp} token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
+  const app =
+    c.taskApp === 'todoist'
+      ? `todoist token ${mask(c.todoistApiToken)}, default due "${c.todoistDefaultDue}"`
+      : `marvin token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
+  return `${ai}; ${app}`;
 }
 
 /** Where earlier versions told users to put the key file; always checked first. */

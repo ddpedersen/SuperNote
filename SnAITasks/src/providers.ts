@@ -5,6 +5,7 @@
 import * as claude from './claude';
 import * as openai from './openai';
 import * as marvin from './marvin';
+import * as todoist from './todoist';
 import type { AiProviderId, Config, TaskAppId } from './config';
 import type { Content, ExtractedTask, Mode } from './prompt';
 
@@ -50,6 +51,11 @@ export const TASK_APPS: Record<TaskAppId, TaskApp> = {
     label: 'Amazing Marvin',
     addTask: (c, task) => marvin.addTask(c.marvinApiToken, task, c.titleSuffix),
     checkToken: c => marvin.checkToken(c.marvinApiToken),
+  },
+  todoist: {
+    label: 'Todoist',
+    addTask: (c, task) => todoist.addTask(c.todoistApiToken, task, c.todoistDefaultDue),
+    checkToken: c => todoist.checkToken(c.todoistApiToken),
   },
 };
 

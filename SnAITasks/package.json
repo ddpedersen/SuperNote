@@ -1,6 +1,6 @@
 {
   "name": "SnMarvin",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -38,5 +38,5 @@
   "engines": {
     "node": ">=18"
   },
-  "description": "AI Task Export: Supernote plugin that uses Claude to turn handwritten to-dos into tasks (Amazing Marvin)."
+  "description": "AI Task Export: Supernote plugin that uses AI (Claude or OpenAI) to turn handwritten to-dos into tasks (Amazing Marvin or Todoist)."
 }

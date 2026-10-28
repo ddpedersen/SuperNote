@@ -124,6 +124,8 @@ describe('settings persistence', () => {
       taskApp: 'marvin',
       marvinApiToken: 'tok',
       titleSuffix: '+today',
+      todoistApiToken: '',
+      todoistDefaultDue: 'today',
     });
     expect(JSON.parse((await readStored())!).marvinApiToken).toBe('tok');
   });
@@ -212,6 +214,15 @@ describe('settings persistence', () => {
       marvinApiToken: 'tok-old',
       titleSuffix: '',
     });
+  });
+
+  it('needs only the selected task app token', async () => {
+    const {saveSettings, loadConfig} = freshConfig();
+    await saveSettings({anthropicApiKey: 'k', taskApp: 'todoist', todoistApiToken: 'td'});
+    expect(await loadConfig()).toMatchObject({taskApp: 'todoist', marvinApiToken: ''});
+    await expect(
+      freshConfig().saveSettings({anthropicApiKey: 'k', taskApp: 'todoist', marvinApiToken: 'm'}),
+    ).rejects.toThrow(/Missing: Todoist API token/);
   });
 
   it('needs only the selected AI key', async () => {

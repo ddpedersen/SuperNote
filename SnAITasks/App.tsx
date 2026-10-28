@@ -114,9 +114,15 @@ function Body({state}: {state: JobState}) {
           />
           <Option
             label="Marked headings"
-            hint="AI only considers items set as a heading with the diagonal-line style, across the whole note"
+            hint="AI finds all tasks, but only from text inside headings with the diagonal-line style, across the whole note"
             onPress={sendMarked}
           />
+          <Text style={styles.tip}>
+            Tip: to send only specific items, lasso them and tap Export Tasks in the lasso
+            toolbar. Everything you select becomes a task, even if it isn't worded like one, and
+            nothing else on the page is sent. Handy for adding one more item from a page you've
+            already exported, without creating duplicates.
+          </Text>
         </ScrollView>
       );
     }
@@ -299,6 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   optionHint: {fontSize: 22, color: '#000000', marginTop: 4},
+  tip: {fontSize: 22, color: '#000000', marginTop: 8, marginBottom: 8},
   input: {
     borderWidth: 2,
     borderColor: '#000000',

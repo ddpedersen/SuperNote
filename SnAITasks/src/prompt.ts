@@ -3,7 +3,12 @@
  * (claude.ts, openai.ts), so both get identical instructions.
  */
 
-export type Mode = 'tasks' | 'marked';
+/**
+ * tasks: find the to-dos (page, pages, note).
+ * marked: find the to-dos, but only inside diagonal-line headings.
+ * selection: the user picked this (lasso / selected text); it is the task.
+ */
+export type Mode = 'tasks' | 'marked' | 'selection';
 
 export type ExtractedTask = {
   title: string;
@@ -13,7 +18,8 @@ export type ExtractedTask = {
 
 /** What one AI request contains. Pages are 0-based. */
 export type Content =
-  | { kind: 'image'; base64: string }
+  // `recognized`: the tablet's own handwriting recognition of the image, if any.
+  | { kind: 'image'; base64: string; recognized?: string }
   | { kind: 'pages'; images: { page: number; base64: string }[] }
   | { kind: 'text'; text: string };
 
@@ -49,7 +55,8 @@ If nothing in the input is a task, return an empty list. Never invent tasks.`;
 
 export const MODE_INSTRUCTIONS: Record<Mode, string> = {
   tasks: 'Extract every to-do item. Look for checkboxes, bullets, "todo"/"TODO", arrows, and action phrases. Skip items that are checked off or crossed out, and skip plain notes that aren\'t actions. If the whole input is a single action, return one task.',
-  marked: 'The user marks each item they want exported as a heading with the diagonal-line (hatched) heading style. Create exactly one task per marked item and ignore everything else. Text items were read by the tablet\'s handwriting recognition and may contain recognition errors; fix obvious ones. For page images, use only headings drawn with diagonal-line shading, not other heading styles or plain writing.',
+  marked: 'The user marks the parts of the note they want considered by setting them as headings with the diagonal-line (hatched) heading style. Find every task in that marked text, and ignore everything outside it. A marked heading is usually one task but may hold several. Text items were read by the tablet\'s handwriting recognition and may contain recognition errors; fix obvious ones. For page images, use only text inside headings drawn with diagonal-line shading, not other heading styles or plain writing.',
+  selection: 'The user selected exactly this content to export as task(s), so it must become at least one task even if it isn\'t phrased as an action; this overrides the empty-list rule. Use the content itself as the title, cleaned up (fix handwriting-recognition errors, keep the wording). If it is a list of separate items, return one task per item. Still skip items that are crossed out.',
 };
 
 export function today(): string {

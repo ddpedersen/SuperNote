@@ -34,7 +34,13 @@ export async function extractTasks(
   const instruction = instructionFor(mode);
   const content =
     input.kind === 'image'
-      ? [imageBlock(input.base64), { type: 'text', text: instruction }]
+      ? [
+          imageBlock(input.base64),
+          ...(input.recognized
+            ? [{ type: 'text', text: `The tablet's handwriting recognition read this as: ${input.recognized}` }]
+            : []),
+          { type: 'text', text: instruction },
+        ]
       : input.kind === 'pages'
         ? [
             ...input.images.flatMap(({ page, base64 }) => [
