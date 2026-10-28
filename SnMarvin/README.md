@@ -1,21 +1,23 @@
-# Send to Marvin (Supernote plugin)
+# AI Task Export (Supernote plugin)
 
-Send handwritten to-dos from a Supernote Manta to Claude, which extracts tasks and adds them to your
-[Amazing Marvin](https://amazingmarvin.com) inbox, scheduled for today.
+Send handwritten to-dos from a Supernote Manta to Claude, which extracts tasks and adds them to your task
+manager. Currently supports the [Amazing Marvin](https://amazingmarvin.com) inbox, scheduled for today.
+
+Internal identifiers (`pluginKey` SnMarvin, the `MyStyle/SnMarvin/` settings folder, the `.snplg` file name) keep
+the original name so existing installs and saved keys carry over.
 
 | Where | Button | What it does |
 |---|---|---|
-| NOTE sidebar | **Send to Marvin** | Menu: **This page**, **Whole note**, **Choose pages…** (e.g. `1-3, 5`), or **Marked headings**. |
-| NOTE lasso toolbar | **To Marvin** | Captures the selection, then asks **Tasks** or **Research**. |
-| DOC text-selection toolbar | **To Marvin** | Sends the selected text, same two choices. |
+| NOTE sidebar | **AI Task Export** | Menu: **This page**, **Whole note**, **Choose pages…** (e.g. `1-3, 5`), or **Marked headings**. |
+| NOTE lasso toolbar | **Export Tasks** | Sends the selection right away; every to-do in it becomes a task. |
+| DOC text-selection toolbar | **Export Tasks** | Sends the selected text the same way. |
 
 **Marked headings** sends only items you set as a heading with the diagonal-line style, from the whole note.
 Their handwriting is recognized on the device and sent as text (cheap and fast); a page is sent as an image only
 if recognition fails. Sends over 10 pages ask first, with a time and cost estimate; pages go 5 per request, and
 tasks found so far are kept if a later batch fails.
 
-**Tasks** extracts the actionable items (checked-off/crossed-out ones are skipped).
-**Research** creates `Research: <topic>` with Claude's questions and search terms in the note.
+Checked-off and crossed-out items are skipped.
 When it finishes, the plugin shows how many tasks were added, with their titles.
 
 Flow: capture (PNG or text) → Claude Messages API (structured JSON output) → Marvin `addTask`, one call per task,
@@ -28,9 +30,9 @@ no `parentId` (Inbox), title suffixed with `+today`. A due date written on the p
    - Marvin API token: Marvin → Settings → API (use the regular *API Token*, not the full-access token).
 2. **Install.** Copy `SnMarvin.snplg` into `MyStyle/` and install it from **Settings → Apps → Plugins → Add Plugin**.
 3. **Enter keys** either way:
-   - **Before using it:** Settings → Apps → Plugins → Send to Marvin → ⚙. Enter both keys and tap **Save**.
+   - **Before using it:** Settings → Apps → Plugins → AI Task Export → ⚙. Enter both keys and tap **Save**.
      Both are tested first. Because no note is open there, the keys are held in memory until you **go to a note
-     and use the plugin once** (any button; e.g. lasso → To Marvin → ✕ sends nothing). Do that before restarting
+     and use the plugin once** (easiest: tap **AI Task Export** in the sidebar, then ✕; the menu sends nothing). Do that before restarting
      the device. The plugin also tries to save on your next pen stroke in any note.
    - **From a note:** tap any plugin button. With no keys saved, the Settings screen opens; enter both keys,
      tap **Test**, then **Save & send** (the page or selection you started with is sent right after).
@@ -81,7 +83,7 @@ When reinstalling over an existing build, use **Add Plugin** and pick the new fi
 | Message | Fix |
 |---|---|
 | `Settings can only be saved with a note open` | Open a note (not a PDF), then open the plugin. |
-| `File access was denied` / `Network access was denied` | Settings → Apps → Plugins → Send to Marvin → permissions. |
+| `File access was denied` / `Network access was denied` | Settings → Apps → Plugins → AI Task Export → permissions. |
 | `Claude rejected the API key (401)` | Check `anthropicApiKey` and the Console billing status. |
 | `Marvin rejected the API token` | Use the API token from Marvin's API settings. |
 | `… failed: generateLassoPreview` / `generateNotePng` | Capture failed. Grab `adb logcat` output and check for `PluginSec: DENY`. |

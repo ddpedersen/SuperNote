@@ -21,7 +21,7 @@ describe('diagnostic log', () => {
       extractTasks('sk-ant-TOPSECRET', 'claude-opus-5-5', {kind: 'text', text: 'x'}, 'tasks'),
     ).rejects.toThrow(/400/);
     const text = getLog().join('\n');
-    expect(text).toMatch(/^SnMarvin v\d/);
+    expect(text).toMatch(/^AI Task Export v\d/);
     expect(text).toContain('HTTP 400');
     expect(text).toContain('bad field');
     expect(text).not.toContain('TOPSECRET');

@@ -1,7 +1,7 @@
 /**
- * Send to Marvin — plugin view.
- * Shows the note menu (page / whole note / pages / marked headings), the
- * Tasks/Research choice for a selection, progress, the result, and Settings.
+ * AI Task Export — plugin view.
+ * Shows the note menu (page / whole note / pages / marked headings),
+ * progress, the result, and Settings.
  * Plain black-on-white with no animation, for e-ink.
  *
  * @format
@@ -11,7 +11,6 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import {
-  choose,
   confirmSend,
   getState,
   openPagePicker,
@@ -97,7 +96,7 @@ function Body({state}: {state: JobState}) {
       const {currentPage, totalPages} = state.note;
       return (
         <ScrollView>
-          <Text style={styles.title}>Send to Marvin</Text>
+          <Text style={styles.title}>AI Task Export</Text>
           <Option
             label="This page"
             hint={`Page ${currentPage + 1} of ${totalPages}: every to-do on it`}
@@ -136,16 +135,6 @@ function Body({state}: {state: JobState}) {
         </>
       );
 
-    case 'choose':
-      return (
-        <>
-          <Text style={styles.title}>Send selection to Marvin as…</Text>
-          <View style={styles.row}>
-            <Button label="Tasks" onPress={() => choose('tasks')} />
-            <Button label="Research" onPress={() => choose('research')} />
-          </View>
-        </>
-      );
 
     case 'working':
       return <Text style={styles.message}>{state.message}</Text>;
@@ -192,8 +181,8 @@ function Body({state}: {state: JobState}) {
             your device.
           </Text>
           <Text style={styles.hint}>
-            Any plugin button works. For example, lasso something, tap To Marvin, then ✕. Nothing is
-            sent until you choose Tasks or Research. Until then, the keys are only kept in memory.
+            Easiest: in any note, tap AI Task Export in the sidebar, then ✕. The menu opens without
+            sending anything. Until then, the keys are only kept in memory.
           </Text>
         </>
       ) : (
@@ -213,7 +202,7 @@ function App(): React.JSX.Element {
     setState(getState());
     return subscribe(s => {
       setState(s);
-      if (s.status === 'choose' || s.status === 'done' || s.status === 'error') {
+      if (s.status === 'done' || s.status === 'error') {
         setShowDetails(false);
       }
     });

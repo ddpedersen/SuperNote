@@ -24,14 +24,14 @@ const icon = Image.resolveAssetSource(require('./assets/icon.png')).uri;
 
 PluginManager.registerButton(1, ['NOTE'], {
   id: BUTTON_PAGE,
-  name: 'Send to Marvin',
+  name: 'AI Task Export',
   icon,
   showType: 1,
 });
 
 PluginManager.registerButton(2, ['NOTE'], {
   id: BUTTON_LASSO,
-  name: 'To Marvin',
+  name: 'Export Tasks',
   icon,
   editDataTypes: [0, 1, 3], // strokes, titles, text boxes
   showType: 1,
@@ -39,7 +39,7 @@ PluginManager.registerButton(2, ['NOTE'], {
 
 PluginManager.registerButton(3, ['DOC'], {
   id: BUTTON_DOC_TEXT,
-  name: 'To Marvin',
+  name: 'Export Tasks',
   icon,
   showType: 1,
 });
