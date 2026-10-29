@@ -160,9 +160,14 @@ function Body({state}: {state: JobState}) {
           </Text>
           <ScrollView style={styles.list}>
             {state.added.map((t, i) => (
-              <Text key={i} style={styles.item}>
-                • {t}
-              </Text>
+              <View key={i} style={styles.itemBox}>
+                <Text style={styles.item}>• {t.title}</Text>
+                {(t.dueDate || t.note) ? (
+                  <Text style={styles.itemDetail}>
+                    {[t.dueDate && `Due ${t.dueDate}`, t.note].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
+              </View>
             ))}
           </ScrollView>
           {state.failed > 0 && (
@@ -293,7 +298,9 @@ const styles = StyleSheet.create({
   },
   message: {fontSize: 32, color: '#000000', marginRight: 40},
   list: {marginBottom: 16},
-  item: {fontSize: 28, color: '#000000', marginBottom: 12},
+  itemBox: {marginBottom: 12},
+  item: {fontSize: 28, color: '#000000'},
+  itemDetail: {fontSize: 22, color: '#000000', marginLeft: 26, marginTop: 2},
   error: {fontSize: 28, color: '#000000', marginBottom: 16},
   hint: {fontSize: 24, color: '#000000', marginTop: 16},
   option: {

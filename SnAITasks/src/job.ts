@@ -53,7 +53,7 @@ export type JobState =
   | { status: 'working'; message: string }
   | {
       status: 'done';
-      added: string[];
+      added: ExtractedTask[];
       failed: number;
       failReason?: string;
       emptyMessage?: string;
@@ -324,7 +324,7 @@ function extract(config: Config, input: Content, mode: Mode): Promise<ExtractedT
 
 /** Adds tasks to the selected task app as they arrive, skipping titles already added this send. */
 class Results {
-  added: string[] = [];
+  added: ExtractedTask[] = [];
   failed = 0;
   failReason?: string;
   private seen = new Set<string>();
@@ -345,9 +345,14 @@ class Results {
         status: 'working',
         message: `Adding to ${taskAppFor(this.config).label}… ${this.added.length + 1}`,
       });
+      log(
+        `task: "${task.title.slice(0, 60)}"` +
+          (task.dueDate ? ` due ${task.dueDate}` : '') +
+          (task.note ? ` note "${task.note.slice(0, 60)}"` : ''),
+      );
       try {
         await taskAppFor(this.config).addTask(this.config, task);
-        this.added.push(task.title);
+        this.added.push(task);
       } catch (e) {
         this.failed++;
         this.failReason = e instanceof Error ? e.message : String(e);

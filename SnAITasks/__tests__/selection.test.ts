@@ -70,7 +70,12 @@ it('sends the lasso in literal mode with the tablet recognition as a hint', asyn
   const texts = claude.messages[0].content.filter((c: any) => c.type === 'text').map((c: any) => c.text);
   expect(texts[0]).toMatch(/recognition read this as: Dentist friday/);
   expect(texts[1]).toMatch(/must become at least one task/);
-  expect(getState()).toMatchObject({status: 'done', added: ['Book dentist'], appLabel: 'Amazing Marvin'});
+  expect(texts[1]).toMatch(/Keep everything the user wrote in the title/);
+  expect(getState()).toMatchObject({
+    status: 'done',
+    added: [expect.objectContaining({title: 'Book dentist'})],
+    appLabel: 'Amazing Marvin',
+  });
 });
 
 it('still creates a task from the selection if the AI returns none', async () => {
@@ -79,5 +84,8 @@ it('still creates a task from the selection if the AI returns none', async () =>
   const marvin = bodies.find(b => b.url.includes('amazingmarvin')).body;
   expect(marvin.title).toBe('Call the printer shop +today');
   expect(marvin.note).toBe('ask about bed leveling');
-  expect(getState()).toMatchObject({status: 'done', added: ['Call the printer shop']});
+  expect(getState()).toMatchObject({
+    status: 'done',
+    added: [{title: 'Call the printer shop', note: 'ask about bed leveling', dueDate: ''}],
+  });
 });
