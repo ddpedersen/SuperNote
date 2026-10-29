@@ -12,6 +12,14 @@ type Section = {heading: string; lines: string[]};
 
 const SECTIONS: Section[] = [
   {
+    heading: 'Requirements',
+    lines: [
+      'An AI account with an API key: Anthropic (console.anthropic.com) or OpenAI (platform.openai.com). API use is billed separately from a Claude or ChatGPT subscription.',
+      'A task app account with an API token: Amazing Marvin (Marvin → Features → API) or Todoist (Settings → Integrations → Developer).',
+      'Wi-Fi when sending. Enter the keys in Settings, or use a key file.',
+    ],
+  },
+  {
     heading: 'What it does',
     lines: [
       'Turns handwritten to-dos into tasks in your task app (Amazing Marvin or Todoist), using the AI you choose (Claude or OpenAI). Pick both once in Settings.',

@@ -229,8 +229,8 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>Settings</Text>
+      <Text style={styles.title}>Settings</Text>
+      <View style={styles.topLink}>
         <Link text="Instructions" onPress={onHelp} />
       </View>
       {resuming && <Text style={styles.notice}>Add your keys to finish sending. Your selection is kept.</Text>}
@@ -378,13 +378,8 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
 }
 
 const styles = StyleSheet.create({
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 8,
-  },
-  title: {fontSize: 32, fontWeight: '700', color: '#000000'},
+  title: {fontSize: 32, fontWeight: '700', color: '#000000', marginBottom: 4},
+  topLink: {flexDirection: 'row', marginBottom: 10},
   notice: {fontSize: 20, color: '#000000', fontStyle: 'italic', marginBottom: 8},
   pair: {flexDirection: 'row', gap: 16},
   half: {flex: 1},
@@ -423,7 +418,7 @@ const styles = StyleSheet.create({
   checkRow: {flexDirection: 'row', alignItems: 'center'},
   checkBox: {fontSize: 32, color: '#000000', marginRight: 10, lineHeight: 36},
   link: {fontSize: 21, color: '#000000', textDecorationLine: 'underline'},
-  links: {flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8},
+  links: {flexDirection: 'row', gap: 32, marginVertical: 8},
   message: {fontSize: 22, color: '#000000', marginBottom: 4},
   code: {fontSize: 19, lineHeight: 26, fontFamily: 'monospace', color: '#000000', marginTop: 6},
   box: {borderWidth: 2, borderColor: '#000000', padding: 10, marginBottom: 8},
