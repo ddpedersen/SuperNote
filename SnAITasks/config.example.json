@@ -1,6 +1,12 @@
 {
-  "anthropicApiKey": "sk-ant-REPLACE_ME",
-  "marvinApiToken": "REPLACE_ME",
-  "model": "claude-opus-5-5",
-  "titleSuffix": "+today"
+  "aiProvider": "anthropic",
+  "anthropicApiKey": "PASTE_ANTHROPIC_KEY",
+  "anthropicModel": "claude-opus-5-5",
+  "openaiApiKey": "",
+  "openaiModel": "gpt-6-astra",
+  "taskApp": "marvin",
+  "marvinApiToken": "PASTE_MARVIN_TOKEN",
+  "titleSuffix": "+today",
+  "todoistApiToken": "",
+  "todoistDefaultDue": "today"
 }
