@@ -200,3 +200,11 @@ fresh; saved keys survive.
 | `todoist: reminder not set … Premium only` (details) | Normal on Todoist's free plan; it still reminds at the due time. |
 | `No headings with the diagonal-line style were found` | Mark items as headings with the diagonal-line style (lasso → H). |
 | `… failed: generateLassoPreview` / `generateNotePng` | Capture failed; send a photo of Show details. |
+
+## Support
+
+Report problems or ideas at <https://github.com/ddpedersen/SuperNote/issues>. A photo of **Show details** helps.
+
+## License
+
+MIT © Derek Pedersen. See [LICENSE](../LICENSE).

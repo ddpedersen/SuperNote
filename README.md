@@ -7,3 +7,5 @@ send tasks to Amazing Marvin or Todoist. Export a page, chosen pages, a whole no
 selection. Uses your own API keys, which stay on the device.
 
 See [SnAITasks/README.md](SnAITasks/README.md) for setup, building, and how it works.
+
+Issues and ideas: <https://github.com/ddpedersen/SuperNote/issues>. Licensed under the [MIT License](LICENSE).

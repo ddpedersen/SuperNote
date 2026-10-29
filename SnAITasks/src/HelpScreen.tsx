@@ -76,6 +76,12 @@ const SECTIONS: Section[] = [
       'Settings can only be saved with a note open, not from a PDF.',
     ],
   },
+  {
+    heading: 'Help and feedback',
+    lines: [
+      'Report a problem or suggest an idea at github.com/ddpedersen/SuperNote/issues. A photo of Show details helps.',
+    ],
+  },
 ];
 
 export default function HelpScreen({onBack}: {onBack: () => void}) {

@@ -38,5 +38,7 @@
   "engines": {
     "node": ">=18"
   },
-  "description": "AI Task Export: Supernote plugin that uses AI (Claude or OpenAI) to turn handwritten to-dos into tasks (Amazing Marvin or Todoist)."
+  "description": "AI Task Export: Supernote plugin that uses AI (Claude or OpenAI) to turn handwritten to-dos into tasks (Amazing Marvin or Todoist).",
+  "license": "MIT",
+  "author": "Derek Pedersen"
 }
