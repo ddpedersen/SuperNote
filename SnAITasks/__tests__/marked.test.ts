@@ -48,3 +48,22 @@ it('recognizes only diagonal-line headings and falls back to images when needed'
   // every fetched element is released
   expect(PluginCommAPI.recycleElement).toHaveBeenCalledTimes(4);
 });
+
+it('uses the page title element when getTitles omits stroke numbers', async () => {
+  const sdk = require('sn-plugin-lib');
+  sdk.PluginFileAPI.getTitles.mockResolvedValueOnce({
+    success: true,
+    result: [{page: 0, style: 4, X: 973, Y: 903}], // no controlTrailNums, as on device
+  });
+  sdk.PluginFileAPI.getElements.mockResolvedValueOnce({
+    success: true,
+    result: [
+      {uuid: 'a', type: 0, numInPage: 1},
+      {uuid: 'b', type: 0, numInPage: 2},
+      {uuid: 't', type: 100, numInPage: 3, title: {X: 973, Y: 903, style: 4, controlTrailNums: [2]}},
+    ],
+  });
+  const result = await getMarkedHeadings('/note.note', 1);
+  expect(result.items).toEqual([{page: 0, text: 'word2'}]);
+  expect(result.unrecognizedPages).toEqual([]);
+});

@@ -114,8 +114,29 @@ export type MarkedHeadings = {
   unrecognizedPages: number[];
 };
 
-type Title = { page: number; style: number; controlTrailNums?: number[] };
-type PageElement = { uuid?: string; type: number; numInPage: number };
+type Title = { page: number; style: number; X?: number; Y?: number; controlTrailNums?: number[] };
+type PageElement = { uuid?: string; type: number; numInPage: number; title?: Title };
+
+const TITLE_TYPE = 100;
+
+/**
+ * Stroke numbers belonging to a heading. getTitles() may omit them (seen on
+ * Manta firmware), so fall back to the page's title element at the same
+ * position, which carries its own controlTrailNums.
+ */
+function headingStrokeNums(title: Title, elements: PageElement[]): number[] {
+  if (title.controlTrailNums?.length) {
+    return title.controlTrailNums;
+  }
+  const match = elements.find(
+    e =>
+      e.type === TITLE_TYPE &&
+      e.title &&
+      Math.abs((e.title.X ?? -1) - (title.X ?? -2)) <= 2 &&
+      Math.abs((e.title.Y ?? -1) - (title.Y ?? -2)) <= 2,
+  );
+  return match?.title?.controlTrailNums ?? [];
+}
 
 /** Finds headings in the marked style and recognizes their handwriting on the device. */
 export async function getMarkedHeadings(
@@ -146,8 +167,13 @@ export async function getMarkedHeadings(
         await PluginFileAPI.getElements(page, notePath),
         `getElements(page ${page + 1})`,
       );
+      const titleEls = elements.filter(e => e.type === TITLE_TYPE);
+      log(
+        `page ${page + 1}: ${elements.length} elements, ${titleEls.length} title elements` +
+          (titleEls[0] ? `, e.g. ${brief({ title: titleEls[0].title }, 140)}` : ''),
+      );
       for (const title of pageTitles) {
-        const nums = new Set(title.controlTrailNums ?? []);
+        const nums = new Set(headingStrokeNums(title, elements));
         const strokes = elements.filter(e => e.type === 0 && nums.has(e.numInPage));
         const text = strokes.length
           ? (unwrap<string>(
