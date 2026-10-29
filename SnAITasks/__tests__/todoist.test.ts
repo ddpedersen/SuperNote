@@ -63,3 +63,41 @@ describe('Todoist with a written time', () => {
     );
   });
 });
+
+describe('Todoist reminder', () => {
+  it('adds a 30-minute relative reminder via sync for a timed task', async () => {
+    calls = [];
+    (globalThis as any).fetch = jest.fn(async (url: string, init: RequestInit) => {
+      calls.push({url, init});
+      if (url.endsWith('/tasks')) {
+        return {ok: true, status: 200, json: async () => ({id: '123'})};
+      }
+      const cmds = JSON.parse(decodeURIComponent(String(init.body).replace('commands=', '')));
+      return {ok: true, status: 200, json: async () => ({sync_status: {[cmds[0].uuid]: 'ok'}})};
+    });
+    await addTask('td', {title: 'Vet', note: '', dueDate: '2026-10-29', dueTime: '16:00'}, '');
+    expect(calls[1].url).toBe('https://api.todoist.com/api/v1/sync');
+    const cmds = JSON.parse(decodeURIComponent(String(calls[1].init.body).replace('commands=', '')));
+    expect(cmds[0]).toMatchObject({
+      type: 'reminder_add',
+      args: {item_id: '123', type: 'relative', minute_offset: 30},
+    });
+  });
+
+  it('keeps the task if the reminder is refused (free plan)', async () => {
+    (globalThis as any).fetch = jest.fn(async (url: string) =>
+      url.endsWith('/tasks')
+        ? {ok: true, status: 200, json: async () => ({id: '9'})}
+        : {ok: false, status: 403, json: async () => ({error: 'premium only'})},
+    );
+    await expect(
+      addTask('td', {title: 'Vet', note: '', dueDate: '', dueTime: '16:00'}, ''),
+    ).resolves.toBeUndefined();
+  });
+
+  it('skips the reminder when no time is written', async () => {
+    respond(200, {id: '5'});
+    await addTask('td', {title: 'No time', note: '', dueDate: '', dueTime: ''}, 'today');
+    expect(calls).toHaveLength(1);
+  });
+});

@@ -3,10 +3,7 @@
  * Tasks without a parentId land in the Inbox. Title autocompletion is on, so
  * a trailing "+today" schedules the task for today and is stripped.
  */
-import { dueWhen, localDateTime, type ExtractedTask } from './prompt';
-
-/** Reminder lead time for tasks with a written time. */
-export const REMINDER_MINUTES_BEFORE = 15;
+import { dueWhen, localDateTime, REMINDER_MINUTES_BEFORE, type ExtractedTask } from './prompt';
 import { log } from './log';
 import { fetchWithTimeout } from './http';
 

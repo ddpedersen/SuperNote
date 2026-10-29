@@ -96,7 +96,7 @@ describe('addTask', () => {
     expect(body.dueDate).toBeUndefined();
   });
 
-  it('sends task time and a reminder 15 minutes before for a written time', async () => {
+  it('sends task time and a reminder 30 minutes before for a written time', async () => {
     mockFetch(200, {_id: 'x', taskTime: '14:00'});
     await addTask('tok', {title: 'Pick up dog', note: '', dueDate: '2026-10-29', dueTime: '14:00'}, '+today');
     const body = JSON.parse(calls[0].init.body as string);
@@ -104,8 +104,8 @@ describe('addTask', () => {
       dueDate: '2026-10-29',
       day: '2026-10-29',
       taskTime: '14:00',
-      reminderOffset: 15,
-      reminderTime: String(new Date(2026, 9, 29, 14, 0).getTime() / 1000 - 15 * 60),
+      reminderOffset: 30,
+      reminderTime: String(new Date(2026, 9, 29, 14, 0).getTime() / 1000 - 30 * 60),
     });
   });
 

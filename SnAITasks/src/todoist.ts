@@ -4,7 +4,7 @@
  * as due_date (with a written time, due_datetime, which gets reminders);
  * otherwise the user's default (e.g. "today") as due_string.
  */
-import { dueWhen, localDateTime, type ExtractedTask } from './prompt';
+import { dueWhen, localDateTime, REMINDER_MINUTES_BEFORE, type ExtractedTask } from './prompt';
 import { log } from './log';
 import { fetchWithTimeout } from './http';
 
@@ -53,6 +53,49 @@ export async function addTask(
         ? 'Todoist rejected the API token.'
         : `Todoist error ${res.status}${detail ? `: ${detail.slice(0, 120)}` : ''}`,
     );
+  }
+  if (due.time) {
+    const created = await res.json().catch(() => null);
+    if (created?.id) {
+      await addReminder(token, String(created.id));
+    }
+  }
+}
+
+/**
+ * Adds a reminder REMINDER_MINUTES_BEFORE the task's time (Sync API
+ * reminder_add). Todoist allows this on paid plans; free plans still get the
+ * reminder at the due time. Never throws: the task already exists.
+ */
+async function addReminder(token: string, taskId: string): Promise<void> {
+  const uuid = `snai-${taskId}-${Date.now()}`;
+  const commands = [
+    {
+      type: 'reminder_add',
+      uuid,
+      temp_id: `${uuid}-r`,
+      args: { item_id: taskId, type: 'relative', minute_offset: REMINDER_MINUTES_BEFORE },
+    },
+  ];
+  try {
+    const res = await fetchWithTimeout(`${API}/sync`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        authorization: `Bearer ${token}`,
+      },
+      body: `commands=${encodeURIComponent(JSON.stringify(commands))}`,
+    }, 20_000);
+    const body = await res.json().catch(() => null);
+    const status = body?.sync_status?.[uuid];
+    log(
+      status === 'ok'
+        ? `todoist: reminder set ${REMINDER_MINUTES_BEFORE} min before`
+        : `todoist: reminder not set (HTTP ${res.status}: ${JSON.stringify(status ?? body?.error ?? '').slice(0, 120)}); ` +
+            'free plans still remind at the due time',
+    );
+  } catch (e) {
+    log(`todoist: reminder request failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 

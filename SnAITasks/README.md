@@ -25,8 +25,8 @@ way to add one more item from a page you've already exported without creating du
 AI. The tablet's own handwriting recognition is sent along as a hint, and is used as the task title if the AI
 returns nothing.
 
-A written time (e.g. "2pm") becomes the task time: Todoist gets a due date-time (its reminders apply); Marvin gets
-`taskTime` plus a reminder 15 minutes before (sent to `addTask`; the details log shows whether Marvin kept it).
+A written time (e.g. "2pm") becomes the task time: Todoist gets a due date-time plus a reminder 30 minutes before
+(paid plans; free plans remind at the due time); Marvin gets `taskTime` plus a reminder 30 minutes before (sent to `addTask`; the details log shows whether Marvin kept it).
 
 When it finishes, the plugin shows how many tasks were added, with each title, due date and note.
 **Instructions** (in the sidebar menu and in Settings) explains all of this on the device.

@@ -79,6 +79,9 @@ export function dueWhen(task: ExtractedTask): { date: string; time: string } {
   return { date, time };
 }
 
+/** How long before a written task time the reminder fires (Marvin, Todoist). */
+export const REMINDER_MINUTES_BEFORE = 30;
+
 /** Local date + HH:MM as a Date (device time zone). */
 export function localDateTime(date: string, time: string): Date {
   const [y, mo, d] = date.split('-').map(Number);
