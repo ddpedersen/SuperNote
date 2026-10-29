@@ -25,7 +25,8 @@ way to add one more item from a page you've already exported without creating du
 AI. The tablet's own handwriting recognition is sent along as a hint, and is used as the task title if the AI
 returns nothing.
 
-When it finishes, the plugin shows how many tasks were added, with their titles.
+When it finishes, the plugin shows how many tasks were added, with each title, due date and note.
+**Instructions** (in the sidebar menu and in Settings) explains all of this on the device.
 
 ## Setup
 

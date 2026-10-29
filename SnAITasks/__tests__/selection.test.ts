@@ -22,7 +22,7 @@ jest.mock('sn-plugin-lib', () => ({
   },
 }));
 
-import {getState, startLasso, startText} from '../src/job';
+import {getSession, getState, startLasso, startText} from '../src/job';
 
 const bodies: any[] = [];
 let aiReplyTasks: unknown[] = [];
@@ -88,4 +88,12 @@ it('still creates a task from the selection if the AI returns none', async () =>
     status: 'done',
     added: [{title: 'Call the printer shop', note: 'ask about bed leveling', dueDate: ''}],
   });
+});
+
+it('counts each open so the screen resets details/instructions', async () => {
+  aiReplyTasks = [{title: 'X', note: '', dueDate: ''}];
+  const before = getSession();
+  await startText('X');
+  await startLasso();
+  expect(getSession()).toBe(before + 2);
 });

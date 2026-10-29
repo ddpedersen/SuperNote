@@ -102,6 +102,14 @@ async function run(pending: Pending) {
   }
 }
 
+/**
+ * Bumped each time the plugin is opened (a button in a note, or the
+ * plugin-list gear). The UI resets its view toggles (details, instructions)
+ * when it changes, so every open starts on the normal screen.
+ */
+let session = 0;
+export const getSession = () => session;
+
 /** Starts a fresh diagnostic log. */
 async function begin(what: string) {
   clearLog();
@@ -115,6 +123,9 @@ async function begin(what: string) {
 
 export function openSettings(fromGear = false) {
   if (!isBusy()) {
+    if (fromGear) {
+      session++;
+    }
     set({ status: 'setup', fromGear });
   }
 }
@@ -170,6 +181,7 @@ export async function startNote() {
   if (isBusy()) {
     return;
   }
+  session++;
   set({ status: 'working', message: 'Opening note…' });
   try {
     await begin('note');
@@ -274,6 +286,7 @@ export async function startLasso() {
   if (isBusy()) {
     return;
   }
+  session++;
   set({ status: 'working', message: 'Capturing selection…' });
   let base64: string;
   let recognized: string;
@@ -294,6 +307,7 @@ export async function startText(text: string) {
   if (isBusy()) {
     return;
   }
+  session++;
   await begin(`doc text (${text.length} chars)`);
   if (!text.trim()) {
     set({ status: 'error', message: 'No text is selected.' });

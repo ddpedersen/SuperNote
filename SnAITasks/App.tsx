@@ -7,11 +7,12 @@
  * @format
  */
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import {
   confirmSend,
+  getSession,
   getState,
   openPagePicker,
   openSettings,
@@ -27,6 +28,7 @@ import {
 } from './src/job';
 import {getLog} from './src/log';
 import SettingsScreen from './src/SettingsScreen';
+import HelpScreen from './src/HelpScreen';
 
 function close() {
   reset();
@@ -87,7 +89,7 @@ function PagePicker({totalPages, error}: {totalPages: number; error?: string}) {
   );
 }
 
-function Body({state}: {state: JobState}) {
+function Body({state, onHelp}: {state: JobState; onHelp: () => void}) {
   switch (state.status) {
     case 'idle':
       return <Text style={styles.message}>Ready.</Text>;
@@ -118,11 +120,14 @@ function Body({state}: {state: JobState}) {
             onPress={sendMarked}
           />
           <Text style={styles.tip}>
-            Tip: to send only specific items, lasso them and tap Export Tasks in the lasso
-            toolbar. Everything you select becomes a task, even if it isn't worded like one, and
-            nothing else on the page is sent. Handy for adding one more item from a page you've
-            already exported, without creating duplicates.
+            Tip: to send only specific items, lasso them and tap Export Tasks. Everything you
+            select becomes a task, and nothing else is sent.
           </Text>
+          <Option
+            label="Instructions"
+            hint="How each option works, lasso vs. AI, due dates, keys and costs"
+            onPress={onHelp}
+          />
         </ScrollView>
       );
     }
@@ -212,16 +217,30 @@ function Body({state}: {state: JobState}) {
 function App(): React.JSX.Element {
   const [state, setState] = useState<JobState>(getState());
   const [showDetails, setShowDetails] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const session = useRef(getSession());
 
   useEffect(() => {
     setState(getState());
     return subscribe(s => {
       setState(s);
+      // Each open of the plugin starts on its normal screen.
+      if (getSession() !== session.current) {
+        session.current = getSession();
+        setShowDetails(false);
+        setShowHelp(false);
+      }
       if (s.status === 'done' || s.status === 'error') {
         setShowDetails(false);
       }
     });
   }, []);
+
+  const closeView = () => {
+    setShowDetails(false);
+    setShowHelp(false);
+    close();
+  };
 
   const finished =
     state.status === 'done' ||
@@ -231,15 +250,30 @@ function App(): React.JSX.Element {
     state.status === 'menu';
 
   if (state.status === 'setup') {
+    // Settings stays mounted (hidden) under Instructions so typed keys aren't lost.
     return (
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <SettingsScreen
-            resuming={!!state.pending}
-            fromGear={!!state.fromGear}
-            onSaved={settingsSaved}
-            onCancel={reset}
-          />
+          {showHelp && <HelpScreen onBack={() => setShowHelp(false)} />}
+          <View style={showHelp ? styles.hidden : styles.fill}>
+            <SettingsScreen
+              resuming={!!state.pending}
+              fromGear={!!state.fromGear}
+              onSaved={settingsSaved}
+              onCancel={reset}
+              onHelp={() => setShowHelp(true)}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (showHelp) {
+    return (
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <HelpScreen onBack={() => setShowHelp(false)} />
         </View>
       </View>
     );
@@ -248,17 +282,17 @@ function App(): React.JSX.Element {
   return (
     <View style={styles.backdrop}>
       <View style={styles.card}>
-        <Pressable style={styles.closeButton} onPress={close} hitSlop={16}>
+        <Pressable style={styles.closeButton} onPress={closeView} hitSlop={16}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
-        {showDetails ? <Details /> : <Body state={state} />}
+        {showDetails ? <Details /> : <Body state={state} onHelp={() => setShowHelp(true)} />}
         <View style={styles.row}>
           <Button
             label={showDetails ? 'Hide details' : 'Show details'}
             onPress={() => setShowDetails(!showDetails)}
           />
           {finished && <Button label="Settings" onPress={() => openSettings()} />}
-          {finished && <Button label="Close" onPress={close} />}
+          {finished && <Button label="Close" onPress={closeView} />}
         </View>
       </View>
     </View>
@@ -266,6 +300,8 @@ function App(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  hidden: {display: 'none'},
+  fill: {flexShrink: 1},
   backdrop: {
     flex: 1,
     justifyContent: 'center',

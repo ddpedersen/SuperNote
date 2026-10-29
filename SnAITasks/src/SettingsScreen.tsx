@@ -32,6 +32,7 @@ type Props = {
   fromGear: boolean;
   onSaved: (result: 'saved' | 'deferred') => void;
   onCancel: () => void;
+  onHelp: () => void;
 };
 
 const EMPTY: Config = normalize({});
@@ -126,7 +127,7 @@ function Link({text, onPress}: {text: string; onPress?: () => void}) {
   );
 }
 
-export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: Props) {
+export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, onHelp}: Props) {
   const [form, setForm] = useState<Config>(EMPTY);
   const [revealed, setRevealed] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -215,7 +216,10 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Settings</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Settings</Text>
+        <Link text="Instructions" onPress={onHelp} />
+      </View>
       {resuming && <Text style={styles.notice}>Add your keys to finish sending. Your selection is kept.</Text>}
       {notice && <Text style={styles.notice}>{notice}</Text>}
 
@@ -354,7 +358,13 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
 }
 
 const styles = StyleSheet.create({
-  title: {fontSize: 32, fontWeight: '700', color: '#000000', marginBottom: 8, marginRight: 40},
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  title: {fontSize: 32, fontWeight: '700', color: '#000000'},
   notice: {fontSize: 20, color: '#000000', fontStyle: 'italic', marginBottom: 8},
   pair: {flexDirection: 'row', gap: 16},
   half: {flex: 1},
