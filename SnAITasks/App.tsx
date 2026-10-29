@@ -8,7 +8,16 @@
  */
 
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  PixelRatio,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import {
   confirmSend,
@@ -25,8 +34,9 @@ import {
   subscribe,
   type JobState,
 } from './src/job';
-import {getLog} from './src/log';
+import {getLog, log} from './src/log';
 import SettingsScreen from './src/SettingsScreen';
+import {useScale, useScaledStyles} from './src/scale';
 
 function close() {
   reset();
@@ -34,6 +44,7 @@ function close() {
 }
 
 function Button({label, onPress}: {label: string; onPress: () => void}) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <Pressable style={styles.button} onPress={onPress}>
       <Text style={styles.buttonText}>{label}</Text>
@@ -43,6 +54,7 @@ function Button({label, onPress}: {label: string; onPress: () => void}) {
 
 /** Diagnostic log, sized to stay readable in a phone photo of the screen. */
 function Details() {
+  const styles = useScaledStyles(baseStyles);
   return (
     <ScrollView style={styles.details}>
       {getLog().map((line, i) => (
@@ -56,6 +68,7 @@ function Details() {
 
 /** Full-width menu option with a one-line explanation. */
 function Option({label, hint, onPress}: {label: string; hint: string; onPress: () => void}) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <Pressable style={styles.option} onPress={onPress}>
       <Text style={styles.buttonText}>{label}</Text>
@@ -65,6 +78,7 @@ function Option({label, hint, onPress}: {label: string; hint: string; onPress: (
 }
 
 function PagePicker({totalPages, error}: {totalPages: number; error?: string}) {
+  const styles = useScaledStyles(baseStyles);
   const [text, setText] = useState('');
   return (
     <>
@@ -88,6 +102,7 @@ function PagePicker({totalPages, error}: {totalPages: number; error?: string}) {
 }
 
 function Body({state}: {state: JobState}) {
+  const styles = useScaledStyles(baseStyles);
   switch (state.status) {
     case 'idle':
       return <Text style={styles.message}>Ready.</Text>;
@@ -205,8 +220,15 @@ function Body({state}: {state: JobState}) {
 }
 
 function App(): React.JSX.Element {
+  const styles = useScaledStyles(baseStyles);
   const [state, setState] = useState<JobState>(getState());
   const [showDetails, setShowDetails] = useState(false);
+  const {width, height} = useWindowDimensions();
+  const scale = useScale();
+
+  useEffect(() => {
+    log(`screen ${Math.round(width)}x${Math.round(height)}dp @${PixelRatio.get()}x, scale ${scale.toFixed(2)}`);
+  }, [width, height, scale]);
 
   useEffect(() => {
     setState(getState());
@@ -260,7 +282,7 @@ function App(): React.JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'center',
@@ -324,7 +346,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontFamily: 'monospace',
   },
-  row: {flexDirection: 'row', justifyContent: 'center', marginTop: 16},
+  row: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 16},
   button: {
     borderWidth: 3,
     borderColor: '#000000',

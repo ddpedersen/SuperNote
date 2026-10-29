@@ -1,6 +1,6 @@
 # AI Task Export (Supernote plugin)
 
-Turn handwritten to-dos on a Supernote Manta into tasks with AI. Pick the AI (**Claude** or **OpenAI**) and the task
+Turn handwritten to-dos on a Supernote (Manta, Nomad, A5X, A6X) into tasks with AI. Pick the AI (**Claude** or **OpenAI**) and the task
 app (**Amazing Marvin** or **Todoist**) once in Settings; keys for each are kept when switching. New tasks land in the
 app's Inbox, due today by default (Marvin `+today`, Todoist due "today"; both configurable).
 
@@ -99,5 +99,12 @@ the host's managed copy in `MyStyle/Plugins/`). Reinstalling the existing entry 
 
 ## Data sent off-device
 
-The page or selection image (or the selected DOC text) goes to `api.anthropic.com`, and the extracted task
-titles and notes go to `serv.amazingmarvin.com`. Nothing else leaves the device.
+The page text or image (or the selection / selected DOC text) goes only to the AI you picked (`api.anthropic.com`
+or `api.openai.com`), and the extracted task titles and notes go only to your task app (`serv.amazingmarvin.com` or
+`api.todoist.com`). Nothing else leaves the device.
+
+## Screen sizes
+
+Layout sizes are tuned for the Manta (1920×2560 px). On smaller screens (Nomad, A5X, A6X: 1404×1872 px) every
+font, margin and padding is scaled down by the same factor (about 0.73) so all screens fit without scrolling; it
+also follows rotation. **Show details** logs the screen size and scale factor in use.

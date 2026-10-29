@@ -24,6 +24,7 @@ import {
 } from './config';
 import {AI_PROVIDERS, aiFor, TASK_APPS, taskAppFor} from './providers';
 import {logError} from './log';
+import {useScaledStyles} from './scale';
 
 type Props = {
   /** True when a send is waiting on these settings. */
@@ -38,6 +39,7 @@ const EMPTY: Config = normalize({});
 
 /** Field label, with an optional small link on the right. */
 function Label({text, right}: {text: string; right?: React.ReactNode}) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <View style={styles.labelRow}>
       <Text style={styles.label}>{text}</Text>
@@ -54,6 +56,7 @@ function Select<T extends string>(props: {
   onChange: (v: T) => void;
   style?: object;
 }) {
+  const styles = useScaledStyles(baseStyles);
   const [open, setOpen] = useState(false);
   const current = props.options.find(o => o.value === props.value);
   return (
@@ -91,6 +94,7 @@ function Field(props: {
   right?: React.ReactNode;
   style?: object;
 }) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <View style={[styles.field, props.style]}>
       <Label text={props.label} right={props.right} />
@@ -109,6 +113,7 @@ function Field(props: {
 }
 
 function Button({label, onPress, disabled}: {label: string; onPress: () => void; disabled?: boolean}) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <Pressable
       style={[styles.button, disabled && styles.buttonDisabled]}
@@ -119,6 +124,7 @@ function Button({label, onPress, disabled}: {label: string; onPress: () => void;
 }
 
 function Link({text, onPress}: {text: string; onPress?: () => void}) {
+  const styles = useScaledStyles(baseStyles);
   return (
     <Pressable onPress={onPress} hitSlop={12}>
       <Text style={styles.link}>{text}</Text>
@@ -127,6 +133,7 @@ function Link({text, onPress}: {text: string; onPress?: () => void}) {
 }
 
 export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: Props) {
+  const styles = useScaledStyles(baseStyles);
   const [form, setForm] = useState<Config>(EMPTY);
   const [revealed, setRevealed] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -353,7 +360,7 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel}: 
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   title: {fontSize: 32, fontWeight: '700', color: '#000000', marginBottom: 8, marginRight: 40},
   notice: {fontSize: 20, color: '#000000', fontStyle: 'italic', marginBottom: 8},
   pair: {flexDirection: 'row', gap: 16},
@@ -395,7 +402,7 @@ const styles = StyleSheet.create({
   message: {fontSize: 22, color: '#000000', marginBottom: 4},
   code: {fontSize: 19, lineHeight: 26, fontFamily: 'monospace', color: '#000000', marginTop: 6},
   box: {borderWidth: 2, borderColor: '#000000', padding: 10, marginBottom: 8},
-  buttons: {flexDirection: 'row', justifyContent: 'center', marginTop: 4},
+  buttons: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 4},
   button: {
     borderWidth: 3,
     borderColor: '#000000',
