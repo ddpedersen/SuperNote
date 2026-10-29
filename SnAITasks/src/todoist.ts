@@ -1,9 +1,10 @@
 /**
  * Todoist API v1: https://developer.todoist.com/api/v1
  * Tasks without a project_id land in the Inbox. A written due date is sent
- * as due_date; otherwise the user's default (e.g. "today") as due_string.
+ * as due_date (with a written time, due_datetime, which gets reminders);
+ * otherwise the user's default (e.g. "today") as due_string.
  */
-import type { ExtractedTask } from './prompt';
+import { dueWhen, localDateTime, type ExtractedTask } from './prompt';
 import { log } from './log';
 import { fetchWithTimeout } from './http';
 
@@ -20,8 +21,12 @@ export async function addTask(
   if (task.note) {
     body.description = task.note;
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)) {
-    body.due_date = task.dueDate;
+  const due = dueWhen(task);
+  if (due.time) {
+    // A timed task gets Todoist's reminders.
+    body.due_datetime = localDateTime(due.date, due.time).toISOString();
+  } else if (due.date) {
+    body.due_date = due.date;
   } else if (defaultDue) {
     body.due_string = defaultDue;
   }

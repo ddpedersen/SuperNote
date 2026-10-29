@@ -327,6 +327,7 @@ function selectionFallback(source: Content): ExtractedTask {
     title: first.trim().slice(0, 200) || 'Supernote selection (handwriting not readable)',
     note: rest.join('\n').trim(),
     dueDate: '',
+    dueTime: '',
   };
 }
 
@@ -362,6 +363,7 @@ class Results {
       log(
         `task: "${task.title.slice(0, 60)}"` +
           (task.dueDate ? ` due ${task.dueDate}` : '') +
+          (task.dueTime ? ` at ${task.dueTime}` : '') +
           (task.note ? ` note "${task.note.slice(0, 60)}"` : ''),
       );
       try {

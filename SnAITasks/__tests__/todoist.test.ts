@@ -42,3 +42,24 @@ describe('Todoist', () => {
     await expect(checkToken('td')).resolves.toMatch(/✓/);
   });
 });
+
+describe('Todoist with a written time', () => {
+  it('sends a due date-time (local time to UTC), which gets reminders', async () => {
+    respond(200);
+    await addTask('td', {title: 'Pick up dog', note: '', dueDate: '2026-10-29', dueTime: '14:00'}, 'today');
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body.due_datetime).toBe(new Date(2026, 9, 29, 14, 0).toISOString());
+    expect(body.due_date).toBeUndefined();
+    expect(body.due_string).toBeUndefined();
+  });
+
+  it('treats a time without a date as today', async () => {
+    respond(200);
+    await addTask('td', {title: 'Call', note: '', dueDate: '', dueTime: '09:30'}, '');
+    const due = new Date(JSON.parse(calls[0].init.body as string).due_datetime);
+    const now = new Date();
+    expect([due.getFullYear(), due.getMonth(), due.getDate(), due.getHours(), due.getMinutes()]).toEqual(
+      [now.getFullYear(), now.getMonth(), now.getDate(), 9, 30],
+    );
+  });
+});

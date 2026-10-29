@@ -46,6 +46,7 @@ const SECTIONS: Section[] = [
     heading: 'Due dates and duplicates',
     lines: [
       'A date written next to a task becomes its due date. Otherwise Marvin uses the title text from Settings (+today by default) and Todoist uses the default due ("today").',
+      'A time written with a task (e.g. "2pm") is set as the task time so you get a reminder: Todoist uses its own reminders; Marvin gets a reminder 15 minutes before. A time with no date means today.',
       'Sending the same page twice creates the tasks twice. Use lasso for later additions.',
       'The result screen lists each task with its due date and note.',
     ],

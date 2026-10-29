@@ -3,7 +3,10 @@
  * Tasks without a parentId land in the Inbox. Title autocompletion is on, so
  * a trailing "+today" schedules the task for today and is stripped.
  */
-import type { ExtractedTask } from './prompt';
+import { dueWhen, localDateTime, type ExtractedTask } from './prompt';
+
+/** Reminder lead time for tasks with a written time. */
+export const REMINDER_MINUTES_BEFORE = 15;
 import { log } from './log';
 import { fetchWithTimeout } from './http';
 
@@ -24,8 +27,19 @@ export async function addTask(
   if (task.note) {
     body.note = task.note;
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)) {
-    body.dueDate = task.dueDate;
+  const due = dueWhen(task);
+  if (due.date && /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)) {
+    body.dueDate = due.date;
+  }
+  if (due.time) {
+    // Marvin's reminder fields (Marvin data types, "new reminder format").
+    // addTask doesn't document them; the response is logged to show whether
+    // they were kept.
+    const at = localDateTime(due.date, due.time).getTime();
+    body.day = due.date;
+    body.taskTime = due.time;
+    body.reminderOffset = REMINDER_MINUTES_BEFORE;
+    body.reminderTime = String(Math.floor(at / 1000) - REMINDER_MINUTES_BEFORE * 60);
   }
 
   let res: Response;
@@ -42,6 +56,13 @@ export async function addTask(
     );
   }
   log(`marvin: HTTP ${res.status} for "${task.title.slice(0, 40)}"`);
+  if (res.ok && due.time) {
+    const saved = await res.json().catch(() => null);
+    log(
+      `marvin: time ${due.time} sent; saved taskTime=${saved?.taskTime ?? 'none'}, ` +
+        `reminderTime=${saved?.reminderTime ?? 'none'}`,
+    );
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     log(`marvin: error body ${detail.slice(0, 200)}`);

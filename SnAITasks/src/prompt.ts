@@ -14,6 +14,8 @@ export type ExtractedTask = {
   title: string;
   note: string;
   dueDate: string; // YYYY-MM-DD or ""
+  /** HH:MM (24h) when a time is written, e.g. "2pm" -> "14:00"; drives reminders. */
+  dueTime?: string;
 };
 
 /** What one AI request contains. Pages are 0-based. */
@@ -34,8 +36,9 @@ export const TASKS_SCHEMA = {
           title: { type: 'string' },
           note: { type: 'string' },
           dueDate: { type: 'string' },
+          dueTime: { type: 'string' },
         },
-        required: ['title', 'note', 'dueDate'],
+        required: ['title', 'note', 'dueDate', 'dueTime'],
         additionalProperties: false,
       },
     },
@@ -50,6 +53,7 @@ Each task you return becomes one to-do item, so:
 - title: short and actionable, starting with a verb where natural (e.g. "Call Dana about the quote"). Keep the writer's wording and names; fix obvious handwriting-recognition errors. No dates, tags, or symbols like +today, #, @ in the title.
 - note: extra detail written alongside the item that doesn't fit in the title, otherwise "".
 - dueDate: YYYY-MM-DD only when a due date is written or clearly implied (resolve relative dates like "Fri" against today's date), otherwise "".
+- dueTime: HH:MM in 24-hour time when a time of day is written for the task (e.g. "2pm" -> "14:00", "9:30" -> "09:30"), otherwise "". A time can be set without a date.
 
 If nothing in the input is a task, return an empty list. Never invent tasks.`;
 
@@ -63,6 +67,23 @@ export function today(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** The task's due date and time if valid; a time with no date means today. */
+export function dueWhen(task: ExtractedTask): { date: string; time: string } {
+  const time = TIME_RE.test(task.dueTime ?? '') ? task.dueTime! : '';
+  const date = DATE_RE.test(task.dueDate) ? task.dueDate : time ? today() : '';
+  return { date, time };
+}
+
+/** Local date + HH:MM as a Date (device time zone). */
+export function localDateTime(date: string, time: string): Date {
+  const [y, mo, d] = date.split('-').map(Number);
+  const [h, mi] = time.split(':').map(Number);
+  return new Date(y, mo - 1, d, h, mi);
 }
 
 /** The user-turn instruction for a request. */

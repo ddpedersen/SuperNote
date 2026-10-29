@@ -167,9 +167,15 @@ function Body({state, onHelp}: {state: JobState; onHelp: () => void}) {
             {state.added.map((t, i) => (
               <View key={i} style={styles.itemBox}>
                 <Text style={styles.item}>• {t.title}</Text>
-                {(t.dueDate || t.note) ? (
+                {(t.dueDate || t.dueTime || t.note) ? (
                   <Text style={styles.itemDetail}>
-                    {[t.dueDate && `Due ${t.dueDate}`, t.note].filter(Boolean).join(' · ')}
+                    {[
+                      (t.dueDate || t.dueTime) &&
+                        `Due ${[t.dueDate, t.dueTime].filter(Boolean).join(' ')}`,
+                      t.note,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 ) : null}
               </View>

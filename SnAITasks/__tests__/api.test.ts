@@ -96,6 +96,27 @@ describe('addTask', () => {
     expect(body.dueDate).toBeUndefined();
   });
 
+  it('sends task time and a reminder 15 minutes before for a written time', async () => {
+    mockFetch(200, {_id: 'x', taskTime: '14:00'});
+    await addTask('tok', {title: 'Pick up dog', note: '', dueDate: '2026-10-29', dueTime: '14:00'}, '+today');
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body).toMatchObject({
+      dueDate: '2026-10-29',
+      day: '2026-10-29',
+      taskTime: '14:00',
+      reminderOffset: 15,
+      reminderTime: String(new Date(2026, 9, 29, 14, 0).getTime() / 1000 - 15 * 60),
+    });
+  });
+
+  it('ignores an invalid time', async () => {
+    mockFetch(200, {});
+    await addTask('tok', {title: 'X', note: '', dueDate: '', dueTime: '2pm'}, '+today');
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body.taskTime).toBeUndefined();
+    expect(body.reminderTime).toBeUndefined();
+  });
+
   it('surfaces auth failures', async () => {
     mockFetch(401, 'nope');
     await expect(addTask('bad', {title: 'X', note: '', dueDate: ''}, '')).rejects.toThrow(
