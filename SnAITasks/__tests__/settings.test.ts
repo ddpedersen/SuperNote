@@ -126,6 +126,7 @@ describe('settings persistence', () => {
       titleSuffix: '+today',
       todoistApiToken: '',
       todoistDefaultDue: 'today',
+      createReminders: true,
     });
     expect(JSON.parse((await readStored())!).marvinApiToken).toBe('tok');
   });
@@ -214,6 +215,15 @@ describe('settings persistence', () => {
       marvinApiToken: 'tok-old',
       titleSuffix: '',
     });
+  });
+
+  it('keeps createReminders off once saved off, and defaults it on', async () => {
+    const {normalize} = freshConfig();
+    expect(normalize({}).createReminders).toBe(true);
+    expect(normalize({createReminders: false}).createReminders).toBe(false);
+    const cfg = freshConfig();
+    await cfg.saveSettings({anthropicApiKey: 'k', marvinApiToken: 't', createReminders: false});
+    expect((await freshConfig().loadConfig()).createReminders).toBe(false);
   });
 
   it('needs only the selected task app token', async () => {

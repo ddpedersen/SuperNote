@@ -26,7 +26,8 @@ AI. The tablet's own handwriting recognition is sent along as a hint, and is use
 returns nothing.
 
 A written time (e.g. "2pm") becomes the task time: Todoist gets a due date-time plus a reminder 30 minutes before
-(paid plans; free plans remind at the due time); Marvin gets `taskTime` plus a reminder 30 minutes before (sent to `addTask`; the details log shows whether Marvin kept it).
+(paid plans; free plans remind at the due time); Marvin gets `taskTime` plus a reminder 30 minutes before.
+Settings → **Create reminders from task times** (on by default) turns this off; the time then goes in the note (sent to `addTask`; the details log shows whether Marvin kept it).
 
 When it finishes, the plugin shows how many tasks were added, with each title, due date and note.
 **Instructions** (in the sidebar menu and in Settings) explains all of this on the device.

@@ -30,6 +30,8 @@ export type Config = {
   todoistApiToken: string;
   /** Todoist due date for tasks with none written, e.g. "today"; "" for none. */
   todoistDefaultDue: string;
+  /** Turn a written time into a task time with a reminder (Marvin, Todoist). */
+  createReminders: boolean;
 };
 
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
@@ -45,7 +47,8 @@ export const KEY_FILE_TEMPLATE = `{
   "taskApp": "marvin",
   "marvinApiToken": "PASTE_MARVIN_TOKEN",
   "titleSuffix": "${DEFAULT_TITLE_SUFFIX}",
-  "todoistApiToken": ""
+  "todoistApiToken": "",
+  "createReminders": true
 }`;
 const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken|todoistApiToken/;
 
@@ -98,6 +101,7 @@ export function normalize(json: Partial<Config> & LegacyConfig): Config {
     todoistApiToken: str(json.todoistApiToken),
     todoistDefaultDue:
       json.todoistDefaultDue === undefined ? DEFAULT_TODOIST_DUE : str(json.todoistDefaultDue),
+    createReminders: json.createReminders !== false,
   };
 }
 
@@ -131,7 +135,7 @@ function describeConfig(c: Config): string {
     c.taskApp === 'todoist'
       ? `todoist token ${mask(c.todoistApiToken)}, default due "${c.todoistDefaultDue}"`
       : `marvin token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
-  return `${ai}; ${app}`;
+  return `${ai}; ${app}; reminders ${c.createReminders ? 'on' : 'off'}`;
 }
 
 /** Where earlier versions told users to put the key file; always checked first. */

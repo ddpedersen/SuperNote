@@ -22,7 +22,7 @@ jest.mock('sn-plugin-lib', () => ({
   },
 }));
 
-import {getSession, getState, startLasso, startText} from '../src/job';
+import {getSession, getState, startLasso, startText, withoutReminder} from '../src/job';
 
 const bodies: any[] = [];
 let aiReplyTasks: unknown[] = [];
@@ -96,4 +96,19 @@ it('counts each open so the screen resets details/instructions', async () => {
   await startText('X');
   await startLasso();
   expect(getSession()).toBe(before + 2);
+});
+
+describe('reminders turned off', () => {
+  it('drops the task time and keeps it in the note when not already written', () => {
+    expect(withoutReminder({title: 'Call vet', note: '', dueDate: '2026-10-29', dueTime: '16:00'})).toEqual({
+      title: 'Call vet',
+      note: 'Time: 16:00',
+      dueDate: '2026-10-29',
+      dueTime: '',
+    });
+  });
+  it('does not repeat a time already in the title', () => {
+    const t = withoutReminder({title: 'Pick up dog (Pet Suites, 2pm)', note: '', dueDate: '', dueTime: '14:00'});
+    expect(t).toMatchObject({dueTime: '', note: ''});
+  });
 });

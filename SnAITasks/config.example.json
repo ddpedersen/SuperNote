@@ -8,5 +8,6 @@
   "marvinApiToken": "PASTE_MARVIN_TOKEN",
   "titleSuffix": "+today",
   "todoistApiToken": "",
-  "todoistDefaultDue": "today"
+  "todoistDefaultDue": "today",
+  "createReminders": true
 }

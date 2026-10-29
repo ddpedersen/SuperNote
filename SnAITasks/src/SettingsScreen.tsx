@@ -119,6 +119,19 @@ function Button({label, onPress, disabled}: {label: string; onPress: () => void;
   );
 }
 
+/** Large tap target with a box that shows ☑ / ☐. */
+function Checkbox(props: {label: string; hint?: string; value: boolean; onChange: (v: boolean) => void}) {
+  return (
+    <Pressable style={styles.field} onPress={() => props.onChange(!props.value)} hitSlop={8}>
+      <View style={styles.checkRow}>
+        <Text style={styles.checkBox}>{props.value ? '☑' : '☐'}</Text>
+        <Text style={styles.label}>{props.label}</Text>
+      </View>
+      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+    </Pressable>
+  );
+}
+
 function Link({text, onPress}: {text: string; onPress?: () => void}) {
   return (
     <Pressable onPress={onPress} hitSlop={12}>
@@ -321,6 +334,13 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
         />
       )}
 
+      <Checkbox
+        label="Create reminders from task times"
+        hint="A time like 2pm sets the task time with a reminder 30 min before. Off: the time goes in the note."
+        value={form.createReminders}
+        onChange={v => setForm(f => ({...f, createReminders: v}))}
+      />
+
       {messages.map((m, i) => (
         <Text key={i} style={styles.message}>
           {m}
@@ -400,6 +420,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   selectOptionOn: {backgroundColor: '#000000'},
+  checkRow: {flexDirection: 'row', alignItems: 'center'},
+  checkBox: {fontSize: 32, color: '#000000', marginRight: 10, lineHeight: 36},
   link: {fontSize: 21, color: '#000000', textDecorationLine: 'underline'},
   links: {flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8},
   message: {fontSize: 22, color: '#000000', marginBottom: 4},

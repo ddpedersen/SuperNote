@@ -331,6 +331,24 @@ function selectionFallback(source: Content): ExtractedTask {
   };
 }
 
+const WRITTEN_TIME = /\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\b\d{1,2}:\d{2}\b/i;
+
+/**
+ * With reminders turned off, a written time is not sent as a task time.
+ * It's kept in the note if it isn't already in the title or note.
+ */
+export function withoutReminder(task: ExtractedTask): ExtractedTask {
+  if (!task.dueTime) {
+    return task;
+  }
+  const shown = WRITTEN_TIME.test(task.title) || WRITTEN_TIME.test(task.note);
+  return {
+    ...task,
+    dueTime: '',
+    note: shown ? task.note : [task.note, `Time: ${task.dueTime}`].filter(Boolean).join(' · '),
+  };
+}
+
 /** Runs the selected AI provider. */
 function extract(config: Config, input: Content, mode: Mode): Promise<ExtractedTask[]> {
   const ai = aiFor(config);
@@ -346,7 +364,8 @@ class Results {
 
   constructor(private config: Config) {}
 
-  async add(tasks: ExtractedTask[]) {
+  async add(found: ExtractedTask[]) {
+    const tasks = this.config.createReminders ? found : found.map(withoutReminder);
     const fresh = tasks.filter(t => {
       const key = t.title.trim().toLowerCase();
       if (this.seen.has(key)) {
