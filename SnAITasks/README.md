@@ -13,8 +13,8 @@ task app (**Amazing Marvin**, **Todoist** or **TickTick**) once in Settings. New
 - **A task app account and API token**, one of:
   - Amazing Marvin: Marvin → Features → API (the regular *API Token*, not the full-access token)
   - Todoist: Settings → Integrations → Developer → API token
-  - TickTick: an API token for the TickTick Open API (`api.ticktick.com`; not the China-region Dida365)
-- **A Supernote with plugin support.** Built and tested on the Manta (A5 X2). Plugins need firmware Chauvet 3.29.44 or
+  - TickTick: Settings → Account → API Keys (international `ticktick.com` accounts; not the China-region Dida365)
+- **A Supernote with plugin support.** Built and tested on the Manta (A5 X2); not yet tested on the Nomad (A6 X2). Plugins need firmware Chauvet 3.29.44 or
   later on Manta/Nomad; this build uses sn-plugin-lib 0.2.3, which may need 3.30.45+.
 - **Wi-Fi** when sending.
 
@@ -56,7 +56,7 @@ handwriting recognition is sent along as a hint, and becomes the title if the AI
 note.
 
 **Instructions:** an on-device guide covering all of the above, keys and costs. Open it from the sidebar menu, or from
-Settings (directly under the heading). The plugin's ⚙ in Settings → Apps → Plugins opens Settings.
+Settings (directly under the heading). The **Settings** item on the plugin's page in Settings → Apps → Plugins opens it too.
 
 ## Setup
 
@@ -65,7 +65,7 @@ Settings (directly under the heading). The plugin's ⚙ in Settings → Apps →
 2. **Enter keys**, one of three ways:
    - **From a note:** tap any plugin button. With no keys saved, Settings opens. Pick the AI service and task app,
      enter the key and token, tap **Test**, then **Save & send**; what you started with is sent right after.
-   - **From the plugin list:** Settings → Apps → Plugins → AI Task Export → ⚙. **Save** tests both keys first.
+   - **From the plugin list:** Settings → Apps → Plugins → AI Task Export → **Settings**. **Save** tests both keys first.
      No note is open there, so the keys are held in memory until you **use the plugin once in a note**; do that
      before restarting. The easiest way is to tap **AI Task Export** in the sidebar, then ✕; the menu sends nothing.
    - **Key file** (no typing on the device): see below.
@@ -157,7 +157,7 @@ npm test          # unit tests (AI providers, task apps, settings storage, page 
 
 | Path | Purpose |
 |---|---|
-| `index.js` | Registers the sidebar, lasso and PDF buttons and the ⚙ settings button |
+| `index.js` | Registers the sidebar, lasso and PDF buttons and the plugin-page Settings item |
 | `App.tsx` | Plugin screens: menu, page picker, confirm, progress, results, details |
 | `src/job.ts` | Send flow: capture → AI → task app, state for the UI |
 | `src/capture.ts` | Page/lasso PNG capture, on-device recognition, marked headings |
@@ -188,7 +188,7 @@ adb logcat -c && adb logcat -s ReactNativeJS:V PluginHost:V   # plugin logs are 
 ```
 
 When reinstalling over an existing build, use **Add Plugin** and pick the new file. Reinstalling the existing entry
-reuses the host's managed copy in `MyStyle/Plugins/`. If a new icon or the ⚙ doesn't appear, uninstall and install
+reuses the host's managed copy in `MyStyle/Plugins/`. If a new icon or the Settings item doesn't appear, uninstall and install
 fresh; saved keys survive.
 
 | Message | Fix |
@@ -201,7 +201,7 @@ fresh; saved keys survive.
 | `OpenAI … model "…" wasn't found` / `Claude … model … wasn't found` (Test) | Enter a current model name in Settings. |
 | `Marvin rejected the API token` | Use the API Token from Marvin → Features → API. |
 | `Todoist rejected the API token` | Copy the token from Todoist → Settings → Integrations → Developer. |
-| `TickTick rejected the API token` | Check the TickTick token; tokens from the developer site can expire. |
+| `TickTick rejected the API token` | Copy a new key from TickTick → Settings → Account → API Keys. |
 | `todoist: reminder not set … Premium only` (details) | Normal on Todoist's free plan; it still reminds at the due time. |
 | `No headings with the diagonal-line style were found` | Mark items as headings with the diagonal-line style (lasso → H). |
 | `… failed: generateLassoPreview` / `generateNotePng` | Capture failed; send a photo of Show details. |

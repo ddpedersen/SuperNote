@@ -63,7 +63,7 @@ const APP_FIELDS: Record<
     optionKey: 'ticktickDefaultDue',
     tokenLabel: 'TickTick API token',
     tokenKey: 'ticktickApiToken',
-    hint: 'Your TickTick API token. Due: "today", "tomorrow", or blank for none.',
+    hint: 'TickTick → Settings → Account → API Keys. Due: "today", "tomorrow", or blank for none.',
   },
 };
 

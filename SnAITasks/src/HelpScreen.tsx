@@ -15,7 +15,7 @@ const SECTIONS: Section[] = [
     heading: 'Requirements',
     lines: [
       'An AI account with an API key: Anthropic (console.anthropic.com) or OpenAI (platform.openai.com). API use is billed separately from a Claude or ChatGPT subscription.',
-      'A task app account with an API token: Amazing Marvin (Marvin → Features → API), Todoist (Settings → Integrations → Developer) or TickTick.',
+      'A task app account with an API token: Amazing Marvin (Marvin → Features → API), Todoist (Settings → Integrations → Developer) or TickTick (Settings → Account → API Keys).',
       'Wi-Fi when sending. Enter the keys in Settings, or use a key file.',
     ],
   },
@@ -65,7 +65,7 @@ const SECTIONS: Section[] = [
       'You need one AI key (Anthropic or OpenAI API key) and your task app token. Enter them in Settings and tap Test, or use a key file (Settings → Key file format) placed anywhere in MyStyle.',
       'AI use is billed to your own API account: roughly 1 cent per page with Claude Opus 5.5, less for lasso and marked headings. A Claude or ChatGPT subscription does not cover API use.',
       'Keys stay on this device and each one is only sent to its own service.',
-      'Saving from the plugin list (gear) holds keys in memory until you use the plugin once in a note. Do that before restarting.',
+      'Saving from Settings → Apps → Plugins → AI Task Export → Settings holds keys in memory until you use the plugin once in a note. Do that before restarting.',
     ],
   },
   {
