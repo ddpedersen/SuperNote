@@ -252,6 +252,13 @@ describe('settings persistence', () => {
     ).rejects.toThrow(/Missing: TickTick API token/);
   });
 
+  it('treats PASTE_ placeholders as missing keys', async () => {
+    const {saveSettings} = freshConfig();
+    await expect(
+      saveSettings({anthropicApiKey: 'k', taskApp: 'ticktick', ticktickApiToken: 'PASTE_TICKTICK_TOKEN'}),
+    ).rejects.toThrow(/Missing: TickTick API token/);
+  });
+
   it('needs only the selected AI key', async () => {
     const {loadConfig, saveSettings} = freshConfig();
     await saveSettings({aiProvider: 'openai', openaiApiKey: 'sk-oa', marvinApiToken: 'tok'});

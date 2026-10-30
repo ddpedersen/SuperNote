@@ -87,6 +87,8 @@ export async function ensurePermission(permission: string): Promise<boolean> {
 type LegacyConfig = { model?: string };
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+/** A key, or "" if blank or still the key file's PASTE_… placeholder. */
+const key = (v: unknown) => (/^PASTE_/i.test(str(v)) ? '' : str(v));
 
 /** Fills defaults and upgrades older saved settings/key files (single `model` field). */
 export function normalize(json: Partial<Config> & LegacyConfig): Config {
@@ -94,19 +96,19 @@ export function normalize(json: Partial<Config> & LegacyConfig): Config {
   const legacyModel = str(json.model);
   return {
     aiProvider,
-    anthropicApiKey: str(json.anthropicApiKey),
+    anthropicApiKey: key(json.anthropicApiKey),
     anthropicModel:
       str(json.anthropicModel) || (aiProvider === 'anthropic' && legacyModel) || DEFAULT_ANTHROPIC_MODEL,
-    openaiApiKey: str(json.openaiApiKey),
+    openaiApiKey: key(json.openaiApiKey),
     openaiModel:
       str(json.openaiModel) || (aiProvider === 'openai' && legacyModel) || DEFAULT_OPENAI_MODEL,
     taskApp: json.taskApp === 'todoist' || json.taskApp === 'ticktick' ? json.taskApp : 'marvin',
-    marvinApiToken: str(json.marvinApiToken),
+    marvinApiToken: key(json.marvinApiToken),
     titleSuffix: json.titleSuffix === undefined ? DEFAULT_TITLE_SUFFIX : str(json.titleSuffix),
-    todoistApiToken: str(json.todoistApiToken),
+    todoistApiToken: key(json.todoistApiToken),
     todoistDefaultDue:
       json.todoistDefaultDue === undefined ? DEFAULT_TODOIST_DUE : str(json.todoistDefaultDue),
-    ticktickApiToken: str(json.ticktickApiToken),
+    ticktickApiToken: key(json.ticktickApiToken),
     ticktickDefaultDue:
       json.ticktickDefaultDue === undefined ? DEFAULT_TICKTICK_DUE : str(json.ticktickDefaultDue),
     createReminders: json.createReminders !== false,
