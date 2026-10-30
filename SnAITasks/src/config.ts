@@ -11,7 +11,7 @@ import { readStored, writeStored } from './store';
 export const MYSTYLE_DIR = '/storage/emulated/0/MyStyle';
 
 export type AiProviderId = 'anthropic' | 'openai';
-export type TaskAppId = 'marvin' | 'todoist';
+export type TaskAppId = 'marvin' | 'todoist' | 'ticktick';
 
 /**
  * Keys for every provider/app are kept, so switching back and forth in
@@ -30,7 +30,10 @@ export type Config = {
   todoistApiToken: string;
   /** Todoist due date for tasks with none written, e.g. "today"; "" for none. */
   todoistDefaultDue: string;
-  /** Turn a written time into a task time with a reminder (Marvin, Todoist). */
+  ticktickApiToken: string;
+  /** TickTick due date for tasks with none written: "today", "tomorrow" or "". */
+  ticktickDefaultDue: string;
+  /** Turn a written time into a task time with a reminder. */
   createReminders: boolean;
 };
 
@@ -38,6 +41,7 @@ export const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-5-5';
 export const DEFAULT_OPENAI_MODEL = 'gpt-6-astra';
 export const DEFAULT_TITLE_SUFFIX = '+today';
 export const DEFAULT_TODOIST_DUE = 'today';
+export const DEFAULT_TICKTICK_DUE = 'today';
 
 /** Shown on the Settings screen so users can create the key file on a phone or computer. */
 export const KEY_FILE_TEMPLATE = `{
@@ -48,9 +52,10 @@ export const KEY_FILE_TEMPLATE = `{
   "marvinApiToken": "PASTE_MARVIN_TOKEN",
   "titleSuffix": "${DEFAULT_TITLE_SUFFIX}",
   "todoistApiToken": "",
+  "ticktickApiToken": "",
   "createReminders": true
 }`;
-const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken|todoistApiToken/;
+const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken|todoistApiToken|ticktickApiToken/;
 
 export class ConfigError extends Error {}
 /** Thrown when keys are missing, so the UI can open the Settings screen. */
@@ -95,12 +100,15 @@ export function normalize(json: Partial<Config> & LegacyConfig): Config {
     openaiApiKey: str(json.openaiApiKey),
     openaiModel:
       str(json.openaiModel) || (aiProvider === 'openai' && legacyModel) || DEFAULT_OPENAI_MODEL,
-    taskApp: json.taskApp === 'todoist' ? 'todoist' : 'marvin',
+    taskApp: json.taskApp === 'todoist' || json.taskApp === 'ticktick' ? json.taskApp : 'marvin',
     marvinApiToken: str(json.marvinApiToken),
     titleSuffix: json.titleSuffix === undefined ? DEFAULT_TITLE_SUFFIX : str(json.titleSuffix),
     todoistApiToken: str(json.todoistApiToken),
     todoistDefaultDue:
       json.todoistDefaultDue === undefined ? DEFAULT_TODOIST_DUE : str(json.todoistDefaultDue),
+    ticktickApiToken: str(json.ticktickApiToken),
+    ticktickDefaultDue:
+      json.ticktickDefaultDue === undefined ? DEFAULT_TICKTICK_DUE : str(json.ticktickDefaultDue),
     createReminders: json.createReminders !== false,
   };
 }
@@ -120,6 +128,9 @@ export function missingKeys(c: Config): string[] {
   if (c.taskApp === 'todoist' && !c.todoistApiToken) {
     missing.push('Todoist API token');
   }
+  if (c.taskApp === 'ticktick' && !c.ticktickApiToken) {
+    missing.push('TickTick API token');
+  }
   return missing;
 }
 
@@ -134,7 +145,9 @@ function describeConfig(c: Config): string {
   const app =
     c.taskApp === 'todoist'
       ? `todoist token ${mask(c.todoistApiToken)}, default due "${c.todoistDefaultDue}"`
-      : `marvin token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
+      : c.taskApp === 'ticktick'
+        ? `ticktick token ${mask(c.ticktickApiToken)}, default due "${c.ticktickDefaultDue}"`
+        : `marvin token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
   return `${ai}; ${app}; reminders ${c.createReminders ? 'on' : 'off'}`;
 }
 

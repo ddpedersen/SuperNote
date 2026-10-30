@@ -37,6 +37,36 @@ type Props = {
 
 const EMPTY: Config = normalize({});
 
+type TextKey = {[K in keyof Config]: Config[K] extends string ? K : never}[keyof Config];
+
+/** Each task app's option field (beside the dropdown) and token field. */
+const APP_FIELDS: Record<
+  TaskAppId,
+  {optionLabel: string; optionKey: TextKey; tokenLabel: string; tokenKey: TextKey; hint: string}
+> = {
+  marvin: {
+    optionLabel: 'Add to titles',
+    optionKey: 'titleSuffix',
+    tokenLabel: 'Marvin API token',
+    tokenKey: 'marvinApiToken',
+    hint: 'Marvin → Features → API. Titles: Marvin shortcuts like +today, #Project, or blank.',
+  },
+  todoist: {
+    optionLabel: 'Default due',
+    optionKey: 'todoistDefaultDue',
+    tokenLabel: 'Todoist API token',
+    tokenKey: 'todoistApiToken',
+    hint: 'Todoist → Settings → Integrations → Developer. Due: e.g. "today", or blank for none.',
+  },
+  ticktick: {
+    optionLabel: 'Default due',
+    optionKey: 'ticktickDefaultDue',
+    tokenLabel: 'TickTick API token',
+    tokenKey: 'ticktickApiToken',
+    hint: 'Your TickTick API token. Due: "today", "tomorrow", or blank for none.',
+  },
+};
+
 /** Field label, with an optional small link on the right. */
 function Label({text, right}: {text: string; right?: React.ReactNode}) {
   return (
@@ -147,7 +177,7 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
 
-  const update = (key: keyof Config) => (value: string) =>
+  const update = (key: TextKey) => (value: string) =>
     setForm(f => ({...f, [key]: value}));
 
   const [notice, setNotice] = useState<string | null>(null);
@@ -296,43 +326,22 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
           onChange={v => setForm(f => ({...f, taskApp: v}))}
           style={styles.half}
         />
-        {form.taskApp === 'marvin' ? (
-          <Field
-            label="Add to titles"
-            value={form.titleSuffix}
-            onChange={update('titleSuffix')}
-            style={styles.half}
-          />
-        ) : (
-          <Field
-            label="Default due"
-            value={form.todoistDefaultDue}
-            onChange={update('todoistDefaultDue')}
-            style={styles.half}
-          />
-        )}
+        <Field
+          label={APP_FIELDS[form.taskApp].optionLabel}
+          value={form[APP_FIELDS[form.taskApp].optionKey]}
+          onChange={update(APP_FIELDS[form.taskApp].optionKey)}
+          style={styles.half}
+        />
       </View>
-      {form.taskApp === 'marvin' ? (
-        <Field
-          label="Marvin API token"
-          hint="Marvin → Features → API. Titles: Marvin shortcuts like +today, #Project, or blank."
-          value={form.marvinApiToken}
-          onChange={update('marvinApiToken')}
-          secret
-          revealed={revealed}
-          right={showKeys}
-        />
-      ) : (
-        <Field
-          label="Todoist API token"
-          hint='Todoist → Settings → Integrations → Developer. Due: e.g. "today", or blank for none.'
-          value={form.todoistApiToken}
-          onChange={update('todoistApiToken')}
-          secret
-          revealed={revealed}
-          right={showKeys}
-        />
-      )}
+      <Field
+        label={APP_FIELDS[form.taskApp].tokenLabel}
+        hint={APP_FIELDS[form.taskApp].hint}
+        value={form[APP_FIELDS[form.taskApp].tokenKey]}
+        onChange={update(APP_FIELDS[form.taskApp].tokenKey)}
+        secret
+        revealed={revealed}
+        right={showKeys}
+      />
 
       <Checkbox
         label="Create reminders from task times"
@@ -363,8 +372,8 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
         <View style={styles.box}>
           <Text style={styles.hint}>
             Or skip typing: save this as any .json file anywhere in MyStyle (e.g. with the
-            Supernote Partner app), with your keys in place of PASTE_…. For OpenAI or Todoist, set
-            "aiProvider"/"taskApp" and fill in that key. Keep straight quotes (").
+            Supernote Partner app), with your keys in place of PASTE_…. For OpenAI, Todoist or TickTick,
+            set "aiProvider"/"taskApp" and fill in that key. Keep straight quotes (").
           </Text>
           <Text style={styles.code}>{KEY_FILE_TEMPLATE}</Text>
         </View>

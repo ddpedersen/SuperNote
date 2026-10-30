@@ -6,6 +6,7 @@ import * as claude from './claude';
 import * as openai from './openai';
 import * as marvin from './marvin';
 import * as todoist from './todoist';
+import * as ticktick from './ticktick';
 import type { AiProviderId, Config, TaskAppId } from './config';
 import type { Content, ExtractedTask, Mode } from './prompt';
 
@@ -56,6 +57,11 @@ export const TASK_APPS: Record<TaskAppId, TaskApp> = {
     label: 'Todoist',
     addTask: (c, task) => todoist.addTask(c.todoistApiToken, task, c.todoistDefaultDue),
     checkToken: c => todoist.checkToken(c.todoistApiToken),
+  },
+  ticktick: {
+    label: 'TickTick',
+    addTask: (c, task) => ticktick.addTask(c.ticktickApiToken, task, c.ticktickDefaultDue),
+    checkToken: c => ticktick.checkToken(c.ticktickApiToken),
   },
 };
 

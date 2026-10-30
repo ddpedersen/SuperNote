@@ -9,5 +9,7 @@
   "titleSuffix": "+today",
   "todoistApiToken": "",
   "todoistDefaultDue": "today",
+  "ticktickApiToken": "",
+  "ticktickDefaultDue": "today",
   "createReminders": true
 }

@@ -1,7 +1,7 @@
 # AI Task Export (Supernote plugin)
 
 Turn handwritten to-dos on a Supernote into tasks with AI. Pick the AI service (**Claude** or **OpenAI**) and the
-task app (**Amazing Marvin** or **Todoist**) once in Settings. New tasks land in the app's Inbox, due today by default.
+task app (**Amazing Marvin**, **Todoist** or **TickTick**) once in Settings. New tasks land in the app's Inbox, due today by default.
 
 ## Requirements
 
@@ -13,6 +13,7 @@ task app (**Amazing Marvin** or **Todoist**) once in Settings. New tasks land in
 - **A task app account and API token**, one of:
   - Amazing Marvin: Marvin → Features → API (the regular *API Token*, not the full-access token)
   - Todoist: Settings → Integrations → Developer → API token
+  - TickTick: an API token for the TickTick Open API (`api.ticktick.com`; not the China-region Dida365)
 - **A Supernote with plugin support.** Built and tested on the Manta (A5 X2). Plugins need firmware Chauvet 3.29.44 or
   later on Manta/Nomad; this build uses sn-plugin-lib 0.2.3, which may need 3.30.45+.
 - **Wi-Fi** when sending.
@@ -42,11 +43,12 @@ handwriting recognition is sent along as a hint, and becomes the title if the AI
 
 **Due dates, times and reminders:**
 - A date written next to a task becomes its due date. Otherwise Marvin uses the title text from Settings (`+today` by
-  default) and Todoist uses the default due ("today").
+  default); Todoist and TickTick use the default due ("today"; TickTick also takes "tomorrow").
 - A written time (e.g. "2pm") becomes the task time, with a reminder **30 minutes before**:
   - Marvin gets `taskTime` and its reminder fields.
   - Todoist gets a due date-time plus a 30-minute reminder. That reminder is a paid-plan feature; on a free plan
     Todoist reminds at the due time instead.
+  - TickTick gets a timed due date plus a 30-minute reminder; dates without a time are all-day.
 - A time with no date means today.
 - **Settings → Create reminders from task times** (on by default) turns this off; the time then goes in the note.
 
@@ -74,7 +76,7 @@ Settings (directly under the heading). The plugin's ⚙ in Settings → Apps →
 - **AI service** + **Model**: defaults are `claude-opus-5-5` and `gpt-6-astra`; any model that reads images works.
 - **API key** for the selected service.
 - **Task app** + **Add to titles** (Marvin shortcuts such as `+today` or `#Project`) or **Default due** (Todoist
-  wording such as `today`, or blank).
+  wording such as `today`; TickTick `today` or `tomorrow`; or blank).
 - **Token** for the selected task app.
 - **Create reminders from task times**.
 - **Test**, **Save**, **Import key file**, **Key file format**.
@@ -99,11 +101,13 @@ Partner app works for this. Fields you don't use can stay blank.
   "titleSuffix": "+today",
   "todoistApiToken": "",
   "todoistDefaultDue": "today",
+  "ticktickApiToken": "",
+  "ticktickDefaultDue": "today",
   "createReminders": true
 }
 ```
 
-- Use `"aiProvider": "openai"` and/or `"taskApp": "todoist"` to switch services.
+- Use `"aiProvider": "openai"` and/or `"taskApp": "todoist"` / `"ticktick"` to switch services.
 - Extra fields such as `"_comment"` are ignored.
 - The file is used automatically while no keys are saved in Settings. **Import key file** + **Save** stores the keys
   so the file can be deleted.
@@ -130,7 +134,7 @@ estimate before sending.
 - **AI:** page or selection images, the tablet's recognized text, or selected PDF text go only to the AI service you
   select (`api.anthropic.com` or `api.openai.com`).
 - **Task app:** task titles, notes, due dates and times go only to the task app you select
-  (`serv.amazingmarvin.com` or `api.todoist.com`).
+  (`serv.amazingmarvin.com`, `api.todoist.com` or `api.ticktick.com`).
 - **Keys:** stay on the device, and each is sent only to its own service.
 
 Nothing else leaves the device.
@@ -159,7 +163,7 @@ npm test          # unit tests (AI providers, task apps, settings storage, page 
 | `src/capture.ts` | Page/lasso PNG capture, on-device recognition, marked headings |
 | `src/prompt.ts` | Shared AI prompt, JSON schema, due date/time helpers |
 | `src/claude.ts`, `src/openai.ts` | AI providers (raw `fetch`; the Anthropic TS SDK doesn't support React Native) |
-| `src/marvin.ts`, `src/todoist.ts` | Task apps |
+| `src/marvin.ts`, `src/todoist.ts`, `src/ticktick.ts` | Task apps |
 | `src/providers.ts` | Registry behind the Settings dropdowns; add a provider or app here |
 | `src/config.ts`, `src/store.ts` | Settings, key file search, `settings.note` storage |
 | `src/SettingsScreen.tsx`, `src/HelpScreen.tsx` | Settings and Instructions screens |
@@ -197,6 +201,7 @@ fresh; saved keys survive.
 | `OpenAI … model "…" wasn't found` / `Claude … model … wasn't found` (Test) | Enter a current model name in Settings. |
 | `Marvin rejected the API token` | Use the API Token from Marvin → Features → API. |
 | `Todoist rejected the API token` | Copy the token from Todoist → Settings → Integrations → Developer. |
+| `TickTick rejected the API token` | Check the TickTick token; tokens from the developer site can expire. |
 | `todoist: reminder not set … Premium only` (details) | Normal on Todoist's free plan; it still reminds at the due time. |
 | `No headings with the diagonal-line style were found` | Mark items as headings with the diagonal-line style (lasso → H). |
 | `… failed: generateLassoPreview` / `generateNotePng` | Capture failed; send a photo of Show details. |

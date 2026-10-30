@@ -126,6 +126,8 @@ describe('settings persistence', () => {
       titleSuffix: '+today',
       todoistApiToken: '',
       todoistDefaultDue: 'today',
+      ticktickApiToken: '',
+      ticktickDefaultDue: 'today',
       createReminders: true,
     });
     expect(JSON.parse((await readStored())!).marvinApiToken).toBe('tok');
@@ -233,6 +235,21 @@ describe('settings persistence', () => {
     await expect(
       freshConfig().saveSettings({anthropicApiKey: 'k', taskApp: 'todoist', marvinApiToken: 'm'}),
     ).rejects.toThrow(/Missing: Todoist API token/);
+  });
+
+  it('supports TickTick, including from a key file', async () => {
+    mockText.set(
+      `${MS}/SnMarvin/config.json`,
+      JSON.stringify({anthropicApiKey: 'k', taskApp: 'ticktick', ticktickApiToken: 'tt'}),
+    );
+    expect(await freshConfig().loadConfig()).toMatchObject({
+      taskApp: 'ticktick',
+      ticktickApiToken: 'tt',
+      ticktickDefaultDue: 'today',
+    });
+    await expect(
+      freshConfig().saveSettings({anthropicApiKey: 'k', taskApp: 'ticktick', marvinApiToken: 'm'}),
+    ).rejects.toThrow(/Missing: TickTick API token/);
   });
 
   it('needs only the selected AI key', async () => {

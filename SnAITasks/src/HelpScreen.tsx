@@ -15,14 +15,14 @@ const SECTIONS: Section[] = [
     heading: 'Requirements',
     lines: [
       'An AI account with an API key: Anthropic (console.anthropic.com) or OpenAI (platform.openai.com). API use is billed separately from a Claude or ChatGPT subscription.',
-      'A task app account with an API token: Amazing Marvin (Marvin → Features → API) or Todoist (Settings → Integrations → Developer).',
+      'A task app account with an API token: Amazing Marvin (Marvin → Features → API), Todoist (Settings → Integrations → Developer) or TickTick.',
       'Wi-Fi when sending. Enter the keys in Settings, or use a key file.',
     ],
   },
   {
     heading: 'What it does',
     lines: [
-      'Turns handwritten to-dos into tasks in your task app (Amazing Marvin or Todoist), using the AI you choose (Claude or OpenAI). Pick both once in Settings.',
+      'Turns handwritten to-dos into tasks in your task app (Amazing Marvin, Todoist or TickTick), using the AI you choose (Claude or OpenAI). Pick both once in Settings.',
     ],
   },
   {
@@ -53,8 +53,8 @@ const SECTIONS: Section[] = [
   {
     heading: 'Due dates and duplicates',
     lines: [
-      'A date written next to a task becomes its due date. Otherwise Marvin uses the title text from Settings (+today by default) and Todoist uses the default due ("today").',
-      'A time written with a task (e.g. "2pm") is set as the task time so you get a reminder: Marvin and Todoist get a reminder 30 minutes before (Todoist free plans remind at the due time instead). Turn this off in Settings → Create reminders from task times; the time is then kept in the note. A time with no date means today.',
+      'A date written next to a task becomes its due date. Otherwise Marvin uses the title text from Settings (+today by default), and Todoist and TickTick use the default due ("today").',
+      'A time written with a task (e.g. "2pm") is set as the task time so you get a reminder: Marvin, Todoist and TickTick get a reminder 30 minutes before (Todoist free plans remind at the due time instead). Turn this off in Settings → Create reminders from task times; the time is then kept in the note. A time with no date means today.',
       'Sending the same page twice creates the tasks twice. Use lasso for later additions.',
       'The result screen lists each task with its due date and note.',
     ],
