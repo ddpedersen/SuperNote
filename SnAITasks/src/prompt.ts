@@ -16,6 +16,8 @@ export type ExtractedTask = {
   dueDate: string; // YYYY-MM-DD or ""
   /** HH:MM (24h) when a time is written, e.g. "2pm" -> "14:00"; drives reminders. */
   dueTime?: string;
+  /** 1-based note page the task came from, when the input labels pages; 0 if unknown. */
+  page?: number;
 };
 
 /** What one AI request contains. Pages are 0-based. */
@@ -37,8 +39,9 @@ export const TASKS_SCHEMA = {
           note: { type: 'string' },
           dueDate: { type: 'string' },
           dueTime: { type: 'string' },
+          page: { type: 'integer' },
         },
-        required: ['title', 'note', 'dueDate', 'dueTime'],
+        required: ['title', 'note', 'dueDate', 'dueTime', 'page'],
         additionalProperties: false,
       },
     },
@@ -54,6 +57,7 @@ Each task you return becomes one to-do item, so:
 - note: extra detail written alongside the item that doesn't fit in the title, otherwise "".
 - dueDate: YYYY-MM-DD only when a due date is written or clearly implied (resolve relative dates like "Fri" against today's date), otherwise "".
 - dueTime: HH:MM in 24-hour time when a time of day is written for the task (e.g. "2pm" -> "14:00", "9:30" -> "09:30"), otherwise "". A time can be set without a date.
+- page: the page number the task came from when the input labels pages (e.g. "Page 3:" or "(page 3)"), otherwise 0.
 
 If nothing in the input is a task, return an empty list. Never invent tasks.`;
 

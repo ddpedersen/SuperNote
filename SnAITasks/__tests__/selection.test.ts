@@ -22,7 +22,8 @@ jest.mock('sn-plugin-lib', () => ({
   },
 }));
 
-import {getSession, getState, startLasso, startText, withoutReminder} from '../src/job';
+import {fileTitle, getSession, getState, labelTask, startLasso, startText, withoutReminder} from '../src/job';
+import {normalize} from '../src/config';
 
 const bodies: any[] = [];
 let aiReplyTasks: unknown[] = [];
@@ -73,7 +74,7 @@ it('sends the lasso in literal mode with the tablet recognition as a hint', asyn
   expect(texts[1]).toMatch(/Keep everything the user wrote in the title/);
   expect(getState()).toMatchObject({
     status: 'done',
-    added: [expect.objectContaining({title: 'Book dentist'})],
+    added: [expect.objectContaining({title: 'Book dentist (SN)', note: 'From Supernote: n, page 1'})],
     appLabel: 'Amazing Marvin',
   });
 });
@@ -82,11 +83,11 @@ it('still creates a task from the selection if the AI returns none', async () =>
   aiReplyTasks = [];
   await startText('Call the printer shop\nask about bed leveling');
   const marvin = bodies.find(b => b.url.includes('amazingmarvin')).body;
-  expect(marvin.title).toBe('Call the printer shop +today');
-  expect(marvin.note).toBe('ask about bed leveling');
+  expect(marvin.title).toBe('Call the printer shop (SN) +today');
+  expect(marvin.note).toBe('ask about bed leveling\n\nFrom Supernote: n, page 1');
   expect(getState()).toMatchObject({
     status: 'done',
-    added: [{title: 'Call the printer shop', note: 'ask about bed leveling', dueDate: ''}],
+    added: [{title: 'Call the printer shop (SN)', dueDate: ''}],
   });
 });
 
@@ -110,5 +111,35 @@ describe('reminders turned off', () => {
   it('does not repeat a time already in the title', () => {
     const t = withoutReminder({title: 'Pick up dog (Pet Suites, 2pm)', note: '', dueDate: '', dueTime: '14:00'});
     expect(t).toMatchObject({dueTime: '', note: ''});
+  });
+});
+
+describe('title tag and note name', () => {
+  const task = {title: 'Call vet', note: 'ask about shots', dueDate: '', page: 3};
+  const origin = {path: '/storage/emulated/0/Note/Weekly plan.note'};
+
+  it('tags the title and adds the note name with the page the AI reported', () => {
+    expect(labelTask(normalize({}), task, origin)).toMatchObject({
+      title: 'Call vet (SN)',
+      note: 'ask about shots\n\nFrom Supernote: Weekly plan, page 3',
+    });
+  });
+
+  it('prefers the known page of a one-page send, and omits an unknown page', () => {
+    expect(labelTask(normalize({}), task, {...origin, page: 0}).note).toMatch(/Weekly plan, page 1$/);
+    expect(labelTask(normalize({}), {...task, note: '', page: 0}, origin).note).toBe(
+      'From Supernote: Weekly plan',
+    );
+  });
+
+  it('can be turned off', () => {
+    expect(labelTask(normalize({titleTag: '', addSource: false}), task, origin)).toMatchObject({
+      title: 'Call vet',
+      note: 'ask about shots',
+    });
+  });
+
+  it('names PDFs and notes without the extension', () => {
+    expect(fileTitle('/x/Document/Manual v2.pdf')).toBe('Manual v2');
   });
 });

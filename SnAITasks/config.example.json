@@ -11,5 +11,7 @@
   "todoistDefaultDue": "today",
   "ticktickApiToken": "",
   "ticktickDefaultDue": "today",
+  "titleTag": "(SN)",
+  "addSource": true,
   "createReminders": true
 }

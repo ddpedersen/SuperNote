@@ -52,6 +52,11 @@ handwriting recognition is sent along as a hint, and becomes the title if the AI
 - A time with no date means today.
 - **Settings → Create reminders from task times** (on by default) turns this off; the time then goes in the note.
 
+**Tags and source:** each task title ends with `(SN)` so tasks from the Supernote are easy to spot, and its notes end
+with the note name and page, e.g. `From Supernote: Weekly plan, page 3`. For multi-page sends the AI reports each task's
+page; nothing extra is sent to the AI. Change the tag (**Tag titles with**, blank for none) or turn off **Note name in
+task notes** in Settings.
+
 **Results:** when it finishes, the plugin shows how many tasks were added, with each task's title, due date/time and
 note.
 
@@ -78,6 +83,7 @@ Settings (directly under the heading). The **Settings** item on the plugin's pag
 - **Task app** + **Add to titles** (Marvin shortcuts such as `+today` or `#Project`) or **Default due** (Todoist
   wording such as `today`; TickTick `today` or `tomorrow`; or blank).
 - **Token** for the selected task app.
+- **Tag titles with** (`(SN)` by default, blank for none) + **Note name in task notes**.
 - **Create reminders from task times**.
 - **Test**, **Save**, **Import key file**, **Key file format**.
 
@@ -103,6 +109,8 @@ Partner app works for this. Fields you don't use can stay blank.
   "todoistDefaultDue": "today",
   "ticktickApiToken": "",
   "ticktickDefaultDue": "today",
+  "titleTag": "(SN)",
+  "addSource": true,
   "createReminders": true
 }
 ```
@@ -133,7 +141,7 @@ estimate before sending.
 
 - **AI:** page or selection images, the tablet's recognized text, or selected PDF text go only to the AI service you
   select (`api.anthropic.com` or `api.openai.com`).
-- **Task app:** task titles, notes, due dates and times go only to the task app you select
+- **Task app:** task titles, notes (including the note name and page, if enabled), due dates and times go only to the task app you select
   (`serv.amazingmarvin.com`, `api.todoist.com` or `api.ticktick.com`).
 - **Keys:** stay on the device, and each is sent only to its own service.
 

@@ -33,6 +33,10 @@ export type Config = {
   ticktickApiToken: string;
   /** TickTick due date for tasks with none written: "today", "tomorrow" or "". */
   ticktickDefaultDue: string;
+  /** Added to the end of every task title, e.g. "(SN)"; "" for none. */
+  titleTag: string;
+  /** Add the note name (and page) to each task's notes. */
+  addSource: boolean;
   /** Turn a written time into a task time with a reminder. */
   createReminders: boolean;
 };
@@ -42,6 +46,7 @@ export const DEFAULT_OPENAI_MODEL = 'gpt-6-astra';
 export const DEFAULT_TITLE_SUFFIX = '+today';
 export const DEFAULT_TODOIST_DUE = 'today';
 export const DEFAULT_TICKTICK_DUE = 'today';
+export const DEFAULT_TITLE_TAG = '(SN)';
 
 /** Shown on the Settings screen so users can create the key file on a phone or computer. */
 export const KEY_FILE_TEMPLATE = `{
@@ -53,6 +58,8 @@ export const KEY_FILE_TEMPLATE = `{
   "titleSuffix": "${DEFAULT_TITLE_SUFFIX}",
   "todoistApiToken": "",
   "ticktickApiToken": "",
+  "titleTag": "${DEFAULT_TITLE_TAG}",
+  "addSource": true,
   "createReminders": true
 }`;
 const KEY_FILE_FIELDS = /anthropicApiKey|openaiApiKey|marvinApiToken|todoistApiToken|ticktickApiToken/;
@@ -111,6 +118,8 @@ export function normalize(json: Partial<Config> & LegacyConfig): Config {
     ticktickApiToken: key(json.ticktickApiToken),
     ticktickDefaultDue:
       json.ticktickDefaultDue === undefined ? DEFAULT_TICKTICK_DUE : str(json.ticktickDefaultDue),
+    titleTag: json.titleTag === undefined ? DEFAULT_TITLE_TAG : str(json.titleTag),
+    addSource: json.addSource !== false,
     createReminders: json.createReminders !== false,
   };
 }
@@ -150,7 +159,10 @@ function describeConfig(c: Config): string {
       : c.taskApp === 'ticktick'
         ? `ticktick token ${mask(c.ticktickApiToken)}, default due "${c.ticktickDefaultDue}"`
         : `marvin token ${mask(c.marvinApiToken)}, suffix "${c.titleSuffix}"`;
-  return `${ai}; ${app}; reminders ${c.createReminders ? 'on' : 'off'}`;
+  return (
+    `${ai}; ${app}; tag "${c.titleTag}", source ${c.addSource ? 'on' : 'off'}, ` +
+    `reminders ${c.createReminders ? 'on' : 'off'}`
+  );
 }
 
 /** Where earlier versions told users to put the key file; always checked first. */

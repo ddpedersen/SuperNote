@@ -23,6 +23,7 @@ const SECTIONS: Section[] = [
     heading: 'What it does',
     lines: [
       'Turns handwritten to-dos into tasks in your task app (Amazing Marvin, Todoist or TickTick), using the AI you choose (Claude or OpenAI). Pick both once in Settings.',
+      'Each task title ends with (SN) so you can spot tasks from your Supernote, and its notes name the note and page it came from (e.g. "From Supernote: Weekly plan, page 3"). Change the tag or turn either off in Settings.',
     ],
   },
   {

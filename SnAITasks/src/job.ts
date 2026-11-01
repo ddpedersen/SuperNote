@@ -6,6 +6,7 @@
 import {
   captureLasso,
   capturePage,
+  currentLocation,
   recognizeLasso,
   getMarkedHeadings,
   getNoteInfo,
@@ -42,7 +43,10 @@ export type Source =
   | { kind: 'notePages'; notePath: string; pages: number[] }
   | { kind: 'marked'; notePath: string; totalPages: number };
 
-type Pending = { source: Source; mode: Mode };
+/** Where the content came from, for the task's notes. `page` is 0-based. */
+type Origin = { path: string; page?: number };
+
+type Pending = { source: Source; mode: Mode; origin?: Origin };
 
 export type JobState =
   | { status: 'idle' }
@@ -290,16 +294,18 @@ export async function startLasso() {
   set({ status: 'working', message: 'Capturing selection…' });
   let base64: string;
   let recognized: string;
+  let origin: Origin | undefined;
   try {
     await begin('lasso');
     base64 = await captureLasso();
     recognized = await recognizeLasso();
     log(`lasso recognized: ${recognized ? `${recognized.length} chars` : 'nothing'}`);
+    origin = (await currentLocation()) ?? undefined;
   } catch (e) {
     fail(e);
     return;
   }
-  await run({ source: { kind: 'image', base64, recognized }, mode: 'selection' });
+  await run({ source: { kind: 'image', base64, recognized }, mode: 'selection', origin });
 }
 
 /** DOC text-selection button: the selected text becomes a task (literal mode). */
@@ -313,7 +319,8 @@ export async function startText(text: string) {
     set({ status: 'error', message: 'No text is selected.' });
     return;
   }
-  await run({ source: { kind: 'text', text }, mode: 'selection' });
+  const origin = (await currentLocation()) ?? undefined;
+  await run({ source: { kind: 'text', text }, mode: 'selection', origin });
 }
 
 // -------------------------------------------------------------------- send
@@ -349,6 +356,26 @@ export function withoutReminder(task: ExtractedTask): ExtractedTask {
   };
 }
 
+/** "Meeting notes" from ".../Note/Meeting notes.note". */
+export function fileTitle(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1).replace(/\.(note|pdf|epub|docx?|txt)$/i, '');
+}
+
+/**
+ * The task as sent: the title tag appended and, with addSource, the note
+ * name and page added to its notes. `origin.page` (0-based) is used when the
+ * whole send is one page; otherwise the page the AI reported (1-based).
+ */
+export function labelTask(config: Config, task: ExtractedTask, origin?: Origin): ExtractedTask {
+  const title = config.titleTag ? `${task.title} ${config.titleTag}` : task.title;
+  if (!config.addSource || !origin) {
+    return { ...task, title };
+  }
+  const page = origin.page !== undefined ? origin.page + 1 : task.page || 0;
+  const source = `From Supernote: ${fileTitle(origin.path)}${page ? `, page ${page}` : ''}`;
+  return { ...task, title, note: [task.note, source].filter(Boolean).join('\n\n') };
+}
+
 /** Runs the selected AI provider. */
 function extract(config: Config, input: Content, mode: Mode): Promise<ExtractedTask[]> {
   const ai = aiFor(config);
@@ -362,7 +389,7 @@ class Results {
   failReason?: string;
   private seen = new Set<string>();
 
-  constructor(private config: Config) {}
+  constructor(private config: Config, private origin?: Origin) {}
 
   async add(found: ExtractedTask[]) {
     const tasks = this.config.createReminders ? found : found.map(withoutReminder);
@@ -374,7 +401,8 @@ class Results {
       this.seen.add(key);
       return true;
     });
-    for (const task of fresh) {
+    for (const extracted of fresh) {
+      const task = labelTask(this.config, extracted, this.origin);
       set({
         status: 'working',
         message: `Adding to ${taskAppFor(this.config).label}… ${this.added.length + 1}`,
@@ -383,7 +411,7 @@ class Results {
         `task: "${task.title.slice(0, 60)}"` +
           (task.dueDate ? ` due ${task.dueDate}` : '') +
           (task.dueTime ? ` at ${task.dueTime}` : '') +
-          (task.note ? ` note "${task.note.slice(0, 60)}"` : ''),
+          (task.note ? ` note "${task.note.slice(0, 80)}"` : ''),
       );
       try {
         await taskAppFor(this.config).addTask(this.config, task);
@@ -431,7 +459,7 @@ async function sendPages(
   }
 }
 
-async function send({ source, mode }: Pending) {
+async function send({ source, mode, origin: given }: Pending) {
   set({ status: 'working', message: 'Loading settings…' });
   let config: Config;
   try {
@@ -439,7 +467,7 @@ async function send({ source, mode }: Pending) {
   } catch (e) {
     if (e instanceof SetupNeeded) {
       log('no keys yet: opening Settings');
-      set({ status: 'setup', pending: { source, mode } });
+      set({ status: 'setup', pending: { source, mode, origin: given } });
       return;
     }
     throw e;
@@ -448,7 +476,13 @@ async function send({ source, mode }: Pending) {
     throw new Error('Network access was denied.');
   }
 
-  const results = new Results(config);
+  const origin: Origin | undefined =
+    source.kind === 'notePages'
+      ? { path: source.notePath, page: source.pages.length === 1 ? source.pages[0] : undefined }
+      : source.kind === 'marked'
+        ? { path: source.notePath }
+        : given;
+  const results = new Results(config, origin);
   let emptyMessage: string | undefined;
 
   if (source.kind === 'notePages') {

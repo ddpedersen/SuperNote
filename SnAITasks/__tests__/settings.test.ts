@@ -128,6 +128,8 @@ describe('settings persistence', () => {
       todoistDefaultDue: 'today',
       ticktickApiToken: '',
       ticktickDefaultDue: 'today',
+      titleTag: '(SN)',
+      addSource: true,
       createReminders: true,
     });
     expect(JSON.parse((await readStored())!).marvinApiToken).toBe('tok');

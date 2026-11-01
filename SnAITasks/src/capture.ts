@@ -84,6 +84,21 @@ export async function getNoteInfo(): Promise<NoteInfo> {
   return { notePath, currentPage, totalPages };
 }
 
+/**
+ * The open file and page (0-based), without saving the note (safe while a
+ * lasso is active). Null if unavailable; only used to label tasks.
+ */
+export async function currentLocation(): Promise<{ path: string; page: number } | null> {
+  try {
+    const path = unwrap<string>(await PluginCommAPI.getCurrentFilePath(), 'getCurrentFilePath');
+    const page = unwrap<number>(await PluginCommAPI.getCurrentPageNum(), 'getCurrentPageNum');
+    return path ? { path, page } : null;
+  } catch (e) {
+    log(`location unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    return null;
+  }
+}
+
 /** Renders one page (0-based) of a note to a base64 PNG. */
 export async function capturePage(notePath: string, page: number): Promise<string> {
   const pngPath = `${await workDir()}/page-${page}-${Date.now()}.png`;

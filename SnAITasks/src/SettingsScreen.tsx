@@ -343,6 +343,21 @@ export default function SettingsScreen({resuming, fromGear, onSaved, onCancel, o
         right={showKeys}
       />
 
+      <View style={styles.pair}>
+        <Field
+          label="Tag titles with"
+          value={form.titleTag}
+          onChange={update('titleTag')}
+          style={styles.half}
+        />
+        <View style={[styles.half, styles.checkCell]}>
+          <Checkbox
+            label="Note name in task notes"
+            value={form.addSource}
+            onChange={v => setForm(f => ({...f, addSource: v}))}
+          />
+        </View>
+      </View>
       <Checkbox
         label="Create reminders from task times"
         hint="A time like 2pm sets the task time with a reminder 30 min before. Off: the time goes in the note."
@@ -425,6 +440,7 @@ const styles = StyleSheet.create({
   },
   selectOptionOn: {backgroundColor: '#000000'},
   checkRow: {flexDirection: 'row', alignItems: 'center'},
+  checkCell: {justifyContent: 'flex-end'},
   checkBox: {fontSize: 32, color: '#000000', marginRight: 10, lineHeight: 36},
   link: {fontSize: 21, color: '#000000', textDecorationLine: 'underline'},
   links: {flexDirection: 'row', gap: 32, marginVertical: 8},
